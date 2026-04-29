@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// Modulo 1 - Acesso (Login por Loja)
+// ==========================================
+
+model Sessao {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token            String    @unique
+  lojaCodigo       String    @map("loja_codigo")
+  lojaNome         String    @map("loja_nome")
+  dispositivoId    String    @map("dispositivo_id")
+  criadaEm         DateTime  @default(now()) @map("criada_em") @db.Timestamptz
+  ultimaAtividadeEm DateTime @default(now()) @map("ultima_atividade_em") @db.Timestamptz
+  revogadaEm       DateTime? @map("revogada_em") @db.Timestamptz
+
+  filaDocumentos FilaDocumento[]
+  entregas       Entrega[]
+
+  @@unique([dispositivoId], map: "uq_sessao_dispositivo_ativa")
+  @@map("sessoes")
+}
+
+// ==========================================
+// Catalogo de documentos (substitui mock Protheus)
+// ==========================================
+
+model DocumentoProtheus {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chaveAcesso String   @unique @map("chave_acesso")
+  payload     Json
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+
+  @@map("documentos_protheus")
+}
+
+// ==========================================
+// Modulo 1 - Lojas cadastradas
+// ==========================================
+
+model Loja {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo   String  @unique
+  nome     String
+  ativa    Boolean @default(true)
+
+  @@map("lojas")
+}
+
+// ==========================================
+// Modulo 4 - Entregadores cadastrados
+// ==========================================
+
+model Entregador {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo String  @unique
+  nome   String
+  ativo  Boolean @default(true)
+
+  @@map("entregadores")
+}
+
+// ==========================================
+// Modulo 3 - Fila de Entregas
+// ==========================================
+
+model FilaDocumento {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessaoId        String    @map("sessao_id") @db.Uuid
+  documentoNumero String    @map("documento_numero")
+  documentoChave  String    @map("documento_chave")
+  clienteNome     String    @map("cliente_nome")
+  qtdItens        Int       @map("qtd_itens")
+  status          String    // pendente | parcial | finalizado | cancelado
+  payloadProtheus Json      @map("payload_protheus")
+  consultadoEm    DateTime  @default(now()) @map("consultado_em") @db.Timestamptz
+  removidoEm      DateTime? @map("removido_em") @db.Timestamptz
+
+  sessao Sessao @relation(fields: [sessaoId], references: [id])
+
+  @@index([sessaoId, consultadoEm(sort: Desc)], map: "idx_fila_sessao_recente")
+  @@map("fila_documentos")
+}
+
+// ==========================================
+// Modulo 4 e 5 - Execucao e Finalizacao
+// ==========================================
+
+model Entrega {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessaoId          String    @map("sessao_id") @db.Uuid
+  documentoNumero   String    @map("documento_numero")
+  entregadorCodigo  String    @map("entregador_codigo")
+  entregadorNome    String    @map("entregador_nome")
+  status            String    @default("em_andamento") // em_andamento | finalizada_total | finalizada_parcial | cancelada
+  motivoPendencia   String?   @map("motivo_pendencia") // retirada_futura | entrega_futura
+  entregaAnteriorId String?   @map("entrega_anterior_id") @db.Uuid
+  iniciadaEm        DateTime  @default(now()) @map("iniciada_em") @db.Timestamptz
+  finalizadaEm      DateTime? @map("finalizada_em") @db.Timestamptz
+
+  sessao          Sessao         @relation(fields: [sessaoId], references: [id])
+  entregaAnterior Entrega?       @relation("Reentrega", fields: [entregaAnteriorId], references: [id])
+  reentregas      Entrega[]      @relation("Reentrega")
+  itens           EntregaItem[]
+  logsAlteracao   LogAlteracao[]
+
+  @@index([documentoNumero, status], map: "idx_entrega_documento_status")
+  @@map("entregas")
+}
+
+model EntregaItem {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entregaId      String  @map("entrega_id") @db.Uuid
+  itemIdProtheus String  @map("item_id_protheus")
+  descricao      String
+  qtdTotal       Decimal @map("qtd_total") @db.Decimal(12, 3)
+  qtdEntregue    Decimal @default(0) @map("qtd_entregue") @db.Decimal(12, 3)
+  unidade        String  @default("UN")
+  observacao     String?
+
+  entrega Entrega @relation(fields: [entregaId], references: [id], onDelete: Cascade)
+
+  @@map("entregas_itens")
+}
+
+// ==========================================
+// Modulo 8 - Administrativo
+// ==========================================
+
+model UsuarioAdmin {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario         String    @unique
+  senhaHash       String    @map("senha_hash")
+  nome            String
+  ativo           Boolean   @default(true)
+  criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  ultimoAcessoEm  DateTime? @map("ultimo_acesso_em") @db.Timestamptz
+
+  @@map("usuarios_admin")
+}
+
+model TentativaLoginAdmin {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario     String
+  ip          String
+  sucesso     Boolean
+  tentativaEm DateTime @default(now()) @map("tentativa_em") @db.Timestamptz
+
+  @@index([usuario, tentativaEm(sort: Desc)])
+  @@map("tentativas_login_admin")
+}
+
+model LogAlteracao {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioAdmin  String   @map("usuario_admin")
+  ipOrigem      String   @map("ip_origem")
+  userAgent     String   @map("user_agent")
+  acao          String
+  recursoTipo   String   @map("recurso_tipo")
+  recursoId     String   @map("recurso_id") @db.Uuid
+  dadosAntes    Json     @map("dados_antes")
+  dadosDepois   Json     @map("dados_depois")
+  motivo        String
+  realizadaEm   DateTime @default(now()) @map("realizada_em") @db.Timestamptz
+
+  entrega Entrega? @relation(fields: [recursoId], references: [id])
+
+  @@index([recursoTipo, recursoId, realizadaEm(sort: Desc)], map: "idx_log_recurso")
+  @@index([usuarioAdmin, realizadaEm(sort: Desc)], map: "idx_log_usuario")
+  @@map("logs_alteracao")
+}

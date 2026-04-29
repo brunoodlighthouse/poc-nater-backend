@@ -1,0 +1,5 @@
+declare const app: import("fastify").FastifyInstance<import("node:http").Server<typeof import("node:http").IncomingMessage, typeof import("node:http").ServerResponse>, import("node:http").IncomingMessage, import("node:http").ServerResponse<import("node:http").IncomingMessage>, import("pino").Logger<never, boolean>, import("fastify").FastifyTypeProviderDefault> & PromiseLike<import("fastify").FastifyInstance<import("node:http").Server<typeof import("node:http").IncomingMessage, typeof import("node:http").ServerResponse>, import("node:http").IncomingMessage, import("node:http").ServerResponse<import("node:http").IncomingMessage>, import("pino").Logger<never, boolean>, import("fastify").FastifyTypeProviderDefault>> & {
+    __linterBrands: "SafePromiseLike";
+};
+export { app };
+//# sourceMappingURL=server.d.ts.map
