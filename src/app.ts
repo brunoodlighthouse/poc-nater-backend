@@ -46,6 +46,8 @@ export function buildApp() {
     requestIdHeader: 'x-correlation-id',
   });
 
+  console.log('🚀 ~ buildApp ~ process.env.DATABASE_URL:', process.env['DATABASE_URL'])
+
   const documentGateway = createDocumentGateway();
   const entregadorRepository = createEntregadorRepository();
   const deliveryGateway = createDeliveryGateway();
