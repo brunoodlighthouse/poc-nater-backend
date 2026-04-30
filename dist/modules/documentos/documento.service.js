@@ -24,18 +24,22 @@ function extractAccessKeyFromBarcode(codigoLido) {
 export function createDocumentoService({ documentoRepository }) {
     return {
         async consultDocument(input) {
+            const saveArgs = { sessaoId: input.sessao.id };
+            const lookupArgs = { filial: input.sessao.loja.codigo, correlationId: input.correlationId };
+            if (input.formato === 'numero') {
+                const chave = input.codigoLido.trim();
+                if (!chave)
+                    throw invalidReadError();
+                const document = await documentoRepository.findInQueueByChave(chave);
+                if (!document)
+                    throw invalidReadError();
+                return documentoRepository.saveToQueue({ ...saveArgs, document });
+            }
             const chaveAcesso = input.formato === 'qrcode'
                 ? extractAccessKeyFromQrCode(input.codigoLido)
                 : extractAccessKeyFromBarcode(input.codigoLido);
-            const document = await documentoRepository.findDocumentByAccessKey({
-                chaveAcesso,
-                filial: input.sessao.loja.codigo,
-                correlationId: input.correlationId,
-            });
-            return documentoRepository.saveToQueue({
-                sessaoId: input.sessao.id,
-                document,
-            });
+            const document = await documentoRepository.findDocumentByAccessKey({ chaveAcesso, ...lookupArgs });
+            return documentoRepository.saveToQueue({ ...saveArgs, document });
         },
     };
 }

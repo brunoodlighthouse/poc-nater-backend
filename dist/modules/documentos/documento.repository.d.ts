@@ -9,6 +9,7 @@ export declare function createDocumentoRepository({ documentGateway }: Documento
         filial: string;
         correlationId: string;
     }): Promise<ProtheusDocumento>;
+    findInQueueByChave(chaveAcesso: string): Promise<ProtheusDocumento | null>;
     saveToQueue(input: {
         sessaoId: string;
         document: ProtheusDocumento;

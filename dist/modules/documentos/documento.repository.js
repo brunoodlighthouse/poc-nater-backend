@@ -21,6 +21,15 @@ export function createDocumentoRepository({ documentGateway }) {
         async findDocumentByAccessKey(input) {
             return documentGateway.findDocumentByAccessKey(input);
         },
+        async findInQueueByChave(chaveAcesso) {
+            const item = await prisma.filaDocumento.findFirst({
+                where: { documentoChave: chaveAcesso, removidoEm: null },
+                orderBy: { consultadoEm: 'desc' },
+            });
+            if (!item)
+                return null;
+            return item.payloadProtheus;
+        },
         async saveToQueue(input) {
             const consultadoEm = new Date();
             const existingItem = await prisma.filaDocumento.findFirst({
@@ -39,7 +48,7 @@ export function createDocumentoRepository({ documentGateway }) {
                         documentoChave: input.document.chaveAcesso,
                         clienteNome: input.document.cliente.nome,
                         qtdItens: input.document.itens.length,
-                        status: mapDocumentStatus(input.document.statusAtual),
+                        // status preservado: gerenciado pelas operações de entrega, não pelo Protheus
                         payloadProtheus: toJsonValue(input.document),
                         consultadoEm,
                     },

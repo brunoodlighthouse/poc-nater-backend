@@ -2,6 +2,8 @@ import fastify, { type FastifyError, type FastifyReply, type FastifyRequest } fr
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { ZodError } from 'zod';
 import { healthCheckDb } from './db/connection.js';
 import { DomainError } from './errors.js';
@@ -28,6 +30,14 @@ import { createSessaoRepository } from './modules/sessoes/sessao.repository.js';
 import { registerSessaoRoutes } from './modules/sessoes/sessao.routes.js';
 import { createSessaoService } from './modules/sessoes/sessao.service.js';
 import { config } from './config.js';
+import {
+  buildErrorResponses,
+  lojaAtivaSchema,
+  okResponseSchema,
+  registerSwaggerSchemas,
+  swaggerOptions,
+  swaggerUiOptions,
+} from './swagger.js';
 
 export function buildApp() {
   const app = fastify({
@@ -67,6 +77,9 @@ export function buildApp() {
   const filaController = createFilaController({ filaService });
   const entregaController = createEntregaController({ entregaService });
 
+  app.register(swagger, swaggerOptions);
+  app.register(swaggerUi, swaggerUiOptions);
+
   app.register(cors, {
     origin: config.ALLOWED_ORIGIN,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -97,33 +110,90 @@ export function buildApp() {
     reply.header('X-Correlation-Id', request.id);
   });
 
-  app.get('/health/live', async () => {
-    return { ok: true };
-  });
+  registerSwaggerSchemas(app);
 
-  app.get('/health/ready', async (_request: FastifyRequest, reply: FastifyReply) => {
-    const dbOk = await healthCheckDb();
-
-    if (!dbOk) {
-      return reply.status(503).send({ ok: false, db: 'down' });
-    }
-
-    const cbState = config.PROTHEUS_MOCK_ENABLED ? 'mock' : getCircuitBreaker().getState();
-    return { ok: true, db: 'up', protheus: cbState };
-  });
-
-  app.get(
-    '/api/v1/lojas',
-    {
-      config: {
-        rateLimit: { max: 30, timeWindow: '1 minute' },
+  app.register(async (rootRoutes) => {
+    rootRoutes.get('/health/live', {
+      schema: {
+        tags: ['Health'],
+        operationId: 'getLiveness',
+        summary: 'Liveness check',
+        response: {
+          200: {
+            type: 'object',
+            required: ['ok'],
+            properties: {
+              ok: { type: 'boolean', enum: [true] },
+            },
+          },
+        },
       },
-    },
-    async () => {
-      const stores = await lojaRepository.listActive();
-      return { ok: true, data: stores };
-    },
-  );
+    }, async () => {
+      return { ok: true };
+    });
+
+    rootRoutes.get('/health/ready', {
+      schema: {
+        tags: ['Health'],
+        operationId: 'getReadiness',
+        summary: 'Readiness check',
+        response: {
+          200: {
+            type: 'object',
+            required: ['ok', 'db', 'protheus'],
+            properties: {
+              ok: { type: 'boolean', enum: [true] },
+              db: { type: 'string', enum: ['up'] },
+              protheus: { type: 'string' },
+            },
+          },
+          503: {
+            type: 'object',
+            required: ['ok', 'db'],
+            properties: {
+              ok: { type: 'boolean', enum: [false] },
+              db: { type: 'string', enum: ['down'] },
+            },
+          },
+        },
+      },
+    }, async (_request: FastifyRequest, reply: FastifyReply) => {
+      const dbOk = await healthCheckDb();
+
+      if (!dbOk) {
+        return reply.status(503).send({ ok: false, db: 'down' });
+      }
+
+      const cbState = config.PROTHEUS_MOCK_ENABLED ? 'mock' : getCircuitBreaker().getState();
+      return { ok: true, db: 'up', protheus: cbState };
+    });
+
+    rootRoutes.get(
+      '/api/v1/lojas',
+      {
+        schema: {
+          tags: ['Lojas'],
+          operationId: 'listStores',
+          summary: 'Listar lojas ativas',
+          description: 'Retorna todas as lojas ativas cadastradas',
+          response: {
+            200: okResponseSchema({
+              type: 'array',
+              items: lojaAtivaSchema,
+            }),
+            ...buildErrorResponses([500]),
+          },
+        },
+        config: {
+          rateLimit: { max: 30, timeWindow: '1 minute' },
+        },
+      },
+      async () => {
+        const stores = await lojaRepository.listActive();
+        return { ok: true, data: stores };
+      },
+    );
+  });
 
   app.register(registerSessaoRoutes, {
     prefix: '/api/v1/sessoes',

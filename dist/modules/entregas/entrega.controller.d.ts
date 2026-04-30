@@ -8,6 +8,7 @@ export declare function createEntregaController({ entregaService }: EntregaContr
     getDetail(request: FastifyRequest, reply: FastifyReply): Promise<never>;
     getPendingDeliveries(request: FastifyRequest, reply: FastifyReply): Promise<never>;
     startDelivery(request: FastifyRequest, reply: FastifyReply): Promise<never>;
+    cancelDelivery(request: FastifyRequest, reply: FastifyReply): Promise<never>;
     finalizeDelivery(request: FastifyRequest, reply: FastifyReply): Promise<never>;
 };
 export type EntregaController = ReturnType<typeof createEntregaController>;

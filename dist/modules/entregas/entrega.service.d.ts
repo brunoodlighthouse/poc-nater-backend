@@ -1,16 +1,14 @@
-import type { CourierGateway } from '../../integrations/protheus/entregadores.js';
 import type { DeliveryGateway } from '../../integrations/protheus/entregas.js';
-import type { DocumentGateway } from '../../integrations/protheus/documentos.js';
+import type { EntregadorRepository } from '../entregadores/entregador.repository.js';
 import type { EntregaRepository } from './entrega.repository.js';
 import type { EntregaDetalheResponse, FinalizarEntregaInput, FinalizarEntregaResponse, IniciarEntregaInput } from './entrega.types.js';
 type EntregaServiceDependencies = {
-    courierGateway: CourierGateway;
+    entregadorRepository: EntregadorRepository;
     deliveryGateway: DeliveryGateway;
-    documentGateway: DocumentGateway;
     entregaRepository: EntregaRepository;
 };
-export declare function createEntregaService({ courierGateway, deliveryGateway, documentGateway, entregaRepository, }: EntregaServiceDependencies): {
-    listCouriers(correlationId: string): Promise<import("../../integrations/protheus/entregadores.js").ProtheusEntregador[]>;
+export declare function createEntregaService({ entregadorRepository, deliveryGateway, entregaRepository, }: EntregaServiceDependencies): {
+    listCouriers(): Promise<import("../entregadores/entregador.repository.js").EntregadorRecord[]>;
     getDetail(sessaoId: string, documento: string): Promise<EntregaDetalheResponse>;
     getPendingDeliveries(sessaoId: string, documento: string): Promise<{
         documento: string;
@@ -19,6 +17,7 @@ export declare function createEntregaService({ courierGateway, deliveryGateway, 
         historico: import("./entrega.types.js").EntregaHistorico[];
     }>;
     startDelivery(input: IniciarEntregaInput): Promise<import("./entrega.types.js").EntregaEmAndamento>;
+    cancelDelivery(entregaId: string, sessaoId: string): Promise<void>;
     finalizeDelivery(input: FinalizarEntregaInput): Promise<FinalizarEntregaResponse>;
 };
 export type EntregaService = ReturnType<typeof createEntregaService>;

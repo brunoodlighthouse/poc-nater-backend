@@ -2,10 +2,17 @@ import { prisma } from '../../db/connection.js';
 function toJsonValue(document) {
     return JSON.parse(JSON.stringify(document));
 }
-function mapDeliveryMode(payload) {
-    return payload.statusAtual === 'parcial' || payload.itens.some((item) => item.qtdEntregue > 0)
-        ? 'reentrega'
-        : 'entrega';
+function computeDeliveredByItem(history) {
+    const map = new Map();
+    for (const delivery of history) {
+        if (delivery.status !== 'finalizada_total' && delivery.status !== 'finalizada_parcial') {
+            continue;
+        }
+        for (const item of delivery.itens) {
+            map.set(item.itemIdProtheus, (map.get(item.itemIdProtheus) ?? 0) + item.qtdEntregue);
+        }
+    }
+    return map;
 }
 function mapDeliveryRecord(entry) {
     return {
@@ -92,24 +99,17 @@ export function createEntregaRepository() {
         },
         async syncQueueDocument(sessaoId, document) {
             const consultadoEm = new Date();
-            const status = document.statusAtual === 'finalizado' ? 'finalizado' : document.statusAtual;
             const existingItem = await prisma.filaDocumento.findFirst({
-                where: {
-                    sessaoId,
-                    documentoNumero: document.documento,
-                    removidoEm: null,
-                },
+                where: { sessaoId, documentoNumero: document.documento, removidoEm: null },
             });
             if (existingItem) {
                 const updated = await prisma.filaDocumento.update({
-                    where: {
-                        id: existingItem.id,
-                    },
+                    where: { id: existingItem.id },
                     data: {
                         documentoChave: document.chaveAcesso,
                         clienteNome: document.cliente.nome,
                         qtdItens: document.itens.length,
-                        status,
+                        // status preservado: gerenciado pelas operações de entrega
                         payloadProtheus: toJsonValue(document),
                         consultadoEm,
                     },
@@ -123,7 +123,7 @@ export function createEntregaRepository() {
                     documentoChave: document.chaveAcesso,
                     clienteNome: document.cliente.nome,
                     qtdItens: document.itens.length,
-                    status,
+                    status: document.statusAtual === 'finalizado' ? 'finalizado' : document.statusAtual,
                     payloadProtheus: toJsonValue(document),
                     consultadoEm,
                 },
@@ -208,53 +208,39 @@ export function createEntregaRepository() {
             });
             return mapOpenDelivery(mapDeliveryRecord(created), input.mode);
         },
+        async cancelDelivery(entregaId) {
+            await prisma.entrega.update({
+                where: { id: entregaId },
+                data: {
+                    status: 'cancelada',
+                    finalizadaEm: new Date(),
+                },
+            });
+        },
         async finalizeDelivery(input) {
             const finalizedAt = new Date();
-            const payload = toJsonValue(input.queueDocument.payloadProtheus);
-            const deliveredByItem = new Map(input.deliveredItems.map((item) => [item.itemIdProtheus, item.qtdEntregue]));
-            for (const item of payload.itens) {
-                const deliveredNow = deliveredByItem.get(item.id) ?? 0;
-                item.qtdEntregue = Math.min(item.qtdTotal, item.qtdEntregue + deliveredNow);
-            }
-            const filaStatus = payload.itens.some((item) => item.qtdEntregue < item.qtdTotal)
-                ? 'parcial'
-                : 'finalizado';
-            payload.statusAtual = filaStatus;
+            const filaStatus = input.status === 'finalizada_total' ? 'finalizado' : 'parcial';
             const result = await prisma.$transaction(async (tx) => {
                 const entrega = await tx.entrega.update({
-                    where: {
-                        id: input.entregaId,
-                    },
+                    where: { id: input.entregaId },
                     data: {
                         status: input.status,
                         motivoPendencia: input.motivoPendencia,
                         finalizadaEm: finalizedAt,
                         itens: {
                             updateMany: input.deliveredItems.map((item) => ({
-                                where: {
-                                    itemIdProtheus: item.itemIdProtheus,
-                                },
-                                data: {
-                                    qtdEntregue: item.qtdEntregue,
-                                },
+                                where: { itemIdProtheus: item.itemIdProtheus },
+                                data: { qtdEntregue: item.qtdEntregue },
                             })),
                         },
                     },
-                    include: {
-                        itens: {
-                            orderBy: {
-                                itemIdProtheus: 'asc',
-                            },
-                        },
-                    },
+                    include: { itens: { orderBy: { itemIdProtheus: 'asc' } } },
                 });
                 await tx.filaDocumento.update({
-                    where: {
-                        id: input.queueDocument.id,
-                    },
+                    where: { id: input.queueDocument.id },
                     data: {
                         status: filaStatus,
-                        payloadProtheus: payload,
+                        // payloadProtheus não é alterado: mantém os dados originais do Protheus
                         consultadoEm: finalizedAt,
                     },
                 });
@@ -278,27 +264,31 @@ export function createEntregaRepository() {
         },
         mapDetailResponse(input) {
             const payload = input.queueDocument.payloadProtheus;
-            const mode = mapDeliveryMode(payload);
+            const deliveredByItem = computeDeliveredByItem(input.history);
+            const hasAnyDelivered = [...deliveredByItem.values()].some((q) => q > 0);
+            const mode = hasAnyDelivered ? 'reentrega' : 'entrega';
             return {
                 documento: {
                     numero: payload.documento,
                     tipo: payload.tipo,
                     chaveAcesso: payload.chaveAcesso,
                     cliente: payload.cliente,
-                    statusAtual: input.queueDocument
-                        .status,
+                    statusAtual: input.queueDocument.status,
                     consultadoEm: input.queueDocument.consultadoEm.toISOString(),
                 },
                 modo: mode,
-                itens: payload.itens.map((item) => ({
-                    id: item.id,
-                    codigoProduto: item.codigoProduto,
-                    descricao: item.descricao,
-                    unidade: item.unidade,
-                    qtdTotal: item.qtdTotal,
-                    qtdJaEntregue: item.qtdEntregue,
-                    qtdPendente: Math.max(0, item.qtdTotal - item.qtdEntregue),
-                })),
+                itens: payload.itens.map((item) => {
+                    const qtdJaEntregue = Math.min(item.qtdTotal, deliveredByItem.get(item.id) ?? 0);
+                    return {
+                        id: item.id,
+                        codigoProduto: item.codigoProduto,
+                        descricao: item.descricao,
+                        unidade: item.unidade,
+                        qtdTotal: item.qtdTotal,
+                        qtdJaEntregue,
+                        qtdPendente: Math.max(0, item.qtdTotal - qtdJaEntregue),
+                    };
+                }),
                 entregaEmAndamento: input.openDelivery ? mapOpenDelivery(input.openDelivery, mode) : null,
                 historico: input.history.map(mapHistorico),
             };

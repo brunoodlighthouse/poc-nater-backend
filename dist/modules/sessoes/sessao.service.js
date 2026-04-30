@@ -11,7 +11,7 @@ function extractStoreCode(qrLoja) {
     }
     throw new LojaNaoEncontradaError();
 }
-export function createSessaoService({ logger, sessaoRepository, storeGateway, }) {
+export function createSessaoService({ logger, sessaoRepository, lojaRepository, }) {
     async function requireSession(token) {
         const sessao = await sessaoRepository.findActiveByToken(token);
         if (!sessao) {
@@ -23,10 +23,7 @@ export function createSessaoService({ logger, sessaoRepository, storeGateway, })
     return {
         async createSession(input) {
             const lojaCodigo = extractStoreCode(input.qrLoja);
-            const store = await storeGateway.findStoreByCode({
-                codigo: lojaCodigo,
-                correlationId: input.correlationId,
-            });
+            const store = await lojaRepository.findByCode(lojaCodigo);
             const token = randomBytes(32).toString('base64url');
             const sessao = await sessaoRepository.upsertByDevice({
                 token,

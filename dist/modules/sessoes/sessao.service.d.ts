@@ -1,4 +1,4 @@
-import type { StoreGateway } from '../../integrations/protheus/types.js';
+import type { LojaRepository } from '../lojas/loja.repository.js';
 import type { CreateSessaoInput, SessaoAtualResponse, SessaoContext, SessaoResponse } from './sessao.types.js';
 import type { SessaoRepository } from './sessao.repository.js';
 type SessaoServiceDependencies = {
@@ -6,9 +6,9 @@ type SessaoServiceDependencies = {
         info(context: Record<string, string>, message: string): void;
     };
     sessaoRepository: SessaoRepository;
-    storeGateway: StoreGateway;
+    lojaRepository: LojaRepository;
 };
-export declare function createSessaoService({ logger, sessaoRepository, storeGateway, }: SessaoServiceDependencies): {
+export declare function createSessaoService({ logger, sessaoRepository, lojaRepository, }: SessaoServiceDependencies): {
     createSession(input: CreateSessaoInput): Promise<SessaoResponse>;
     getCurrentSession(token: string): Promise<SessaoAtualResponse>;
     requireSession: (token: string) => Promise<SessaoContext>;

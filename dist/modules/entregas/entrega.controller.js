@@ -2,7 +2,7 @@ import { documentoParamSchema, entregaIdParamSchema, finalizarEntregaSchema, ini
 export function createEntregaController({ entregaService }) {
     return {
         async listCouriers(request, reply) {
-            const data = await entregaService.listCouriers(request.id);
+            const data = await entregaService.listCouriers();
             return reply.send({
                 ok: true,
                 data,
@@ -35,6 +35,11 @@ export function createEntregaController({ entregaService }) {
                 ok: true,
                 data,
             });
+        },
+        async cancelDelivery(request, reply) {
+            const params = entregaIdParamSchema.parse(request.params);
+            await entregaService.cancelDelivery(params.id, request.session.id);
+            return reply.send({ ok: true, data: null });
         },
         async finalizeDelivery(request, reply) {
             const params = entregaIdParamSchema.parse(request.params);

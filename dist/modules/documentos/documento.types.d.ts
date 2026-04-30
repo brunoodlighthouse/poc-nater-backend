@@ -1,5 +1,5 @@
 import type { SessaoContext } from '../sessoes/sessao.types.js';
-export type DocumentoFormato = 'qrcode' | 'barcode';
+export type DocumentoFormato = 'qrcode' | 'barcode' | 'numero';
 export type DocumentoConsultaInput = {
     codigoLido: string;
     formato: DocumentoFormato;

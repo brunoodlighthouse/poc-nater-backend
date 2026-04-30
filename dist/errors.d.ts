@@ -45,6 +45,9 @@ export declare class LojaNaoEncontradaError extends DomainError {
 export declare class ProtheusIndisponivelError extends DomainError {
     constructor(message?: string);
 }
+export declare class EntregaNaoPodeSerCanceladaError extends DomainError {
+    constructor();
+}
 export declare class MotivoObrigatorioError extends DomainError {
     constructor();
 }

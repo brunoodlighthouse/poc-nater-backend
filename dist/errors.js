@@ -84,6 +84,11 @@ export class ProtheusIndisponivelError extends DomainError {
         super('PROTHEUS_INDISPONIVEL', message, 503);
     }
 }
+export class EntregaNaoPodeSerCanceladaError extends DomainError {
+    constructor() {
+        super('ENTREGA_NAO_PODE_SER_CANCELADA', 'Apenas entregas em andamento podem ser canceladas', 409);
+    }
+}
 export class MotivoObrigatorioError extends DomainError {
     constructor() {
         super('MOTIVO_OBRIGATORIO', 'Motivo e obrigatorio (minimo 10 caracteres)', 400);

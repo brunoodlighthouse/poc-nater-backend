@@ -1,4 +1,4 @@
-import { DocumentoNaoNaFilaError, EntregaJaEmAndamentoError, EntregaNaoEncontradaError, EntregaSemPendenciasError, NenhumItemEntregueError, QuantidadeExcedeTotalError, QuantidadeInvalidaError, } from '../../errors.js';
+import { DocumentoNaoNaFilaError, EntregaJaEmAndamentoError, EntregaNaoPodeSerCanceladaError, EntregaNaoEncontradaError, EntregaSemPendenciasError, NenhumItemEntregueError, QuantidadeExcedeTotalError, QuantidadeInvalidaError, } from '../../errors.js';
 function isIntegerOnlyUnit(unidade) {
     return unidade !== 'KG';
 }
@@ -14,7 +14,7 @@ function isValidQuantityForUnit(quantity, unidade) {
 function normalizeQuantity(quantity) {
     return Math.round(quantity * 1000) / 1000;
 }
-export function createEntregaService({ courierGateway, deliveryGateway, documentGateway, entregaRepository, }) {
+export function createEntregaService({ entregadorRepository, deliveryGateway, entregaRepository, }) {
     async function loadDetail(sessaoId, documento) {
         const queueDocument = await entregaRepository.findQueueDocumentByNumber(sessaoId, documento);
         if (!queueDocument) {
@@ -31,8 +31,8 @@ export function createEntregaService({ courierGateway, deliveryGateway, document
         });
     }
     return {
-        async listCouriers(correlationId) {
-            return courierGateway.listActiveCouriers({ correlationId });
+        async listCouriers() {
+            return entregadorRepository.listActive();
         },
         async getDetail(sessaoId, documento) {
             return loadDetail(sessaoId, documento);
@@ -59,31 +59,30 @@ export function createEntregaService({ courierGateway, deliveryGateway, document
             if (openDelivery) {
                 throw new EntregaJaEmAndamentoError(openDelivery.entregadorNome);
             }
-            const [courier, liveDocument, history] = await Promise.all([
-                courierGateway.findCourierByCode({
-                    codigo: input.entregadorCodigo,
-                    correlationId: input.correlationId,
-                }),
-                documentGateway.findDocumentByAccessKey({
-                    chaveAcesso: queueDocument.documentoChave,
-                    filial: input.sessao.loja.codigo,
-                    correlationId: input.correlationId,
-                }),
+            const [courier, history] = await Promise.all([
+                entregadorRepository.findByCode(input.entregadorCodigo),
                 entregaRepository.listDeliveryHistory(input.documento),
             ]);
-            const syncedQueue = await entregaRepository.syncQueueDocument(input.sessao.id, liveDocument);
-            const mode = liveDocument.statusAtual === 'parcial' ||
-                liveDocument.itens.some((item) => item.qtdEntregue > 0)
-                ? 'reentrega'
-                : 'entrega';
-            const pendingItems = syncedQueue.payloadProtheus.itens
-                .filter((item) => item.qtdEntregue < item.qtdTotal)
+            // Calcula quantidade já entregue por item a partir do histórico local
+            const deliveredByItem = new Map();
+            for (const delivery of history) {
+                if (delivery.status !== 'finalizada_total' && delivery.status !== 'finalizada_parcial') {
+                    continue;
+                }
+                for (const item of delivery.itens) {
+                    deliveredByItem.set(item.itemIdProtheus, (deliveredByItem.get(item.itemIdProtheus) ?? 0) + item.qtdEntregue);
+                }
+            }
+            const hasAnyDelivered = [...deliveredByItem.values()].some((q) => q > 0);
+            const mode = hasAnyDelivered ? 'reentrega' : 'entrega';
+            const pendingItems = queueDocument.payloadProtheus.itens
                 .map((item) => ({
                 itemIdProtheus: item.id,
                 descricao: item.descricao,
                 unidade: item.unidade,
-                qtdTotal: normalizeQuantity(item.qtdTotal - item.qtdEntregue),
-            }));
+                qtdTotal: normalizeQuantity(item.qtdTotal - (deliveredByItem.get(item.id) ?? 0)),
+            }))
+                .filter((item) => item.qtdTotal > 0);
             if (pendingItems.length === 0) {
                 throw new EntregaSemPendenciasError();
             }
@@ -97,6 +96,16 @@ export function createEntregaService({ courierGateway, deliveryGateway, document
                 mode,
                 itens: pendingItems,
             });
+        },
+        async cancelDelivery(entregaId, sessaoId) {
+            const delivery = await entregaRepository.findDeliveryById(entregaId, sessaoId);
+            if (!delivery) {
+                throw new EntregaNaoEncontradaError();
+            }
+            if (delivery.status !== 'em_andamento') {
+                throw new EntregaNaoPodeSerCanceladaError();
+            }
+            await entregaRepository.cancelDelivery(entregaId);
         },
         async finalizeDelivery(input) {
             const delivery = await entregaRepository.findDeliveryById(input.entregaId, input.sessao.id);
@@ -124,27 +133,16 @@ export function createEntregaService({ courierGateway, deliveryGateway, document
                     })),
                 };
             }
-            const liveDocument = await documentGateway.findDocumentByAccessKey({
-                chaveAcesso: queueDocument.documentoChave,
-                filial: input.sessao.loja.codigo,
-                correlationId: input.correlationId,
-            });
-            const syncedQueue = await entregaRepository.syncQueueDocument(input.sessao.id, liveDocument);
-            const availableByItem = new Map(syncedQueue.payloadProtheus.itens.map((item) => [
-                item.id,
-                item.qtdTotal - item.qtdEntregue,
-            ]));
             const deliveredItems = delivery.itens.map((item) => {
                 const requestedQuantity = input.tipo === 'total'
                     ? item.qtdTotal
                     : (input.itens?.find((entry) => entry.itemIdProtheus === item.itemIdProtheus)
                         ?.qtdEntregue ?? 0);
                 const normalizedQuantity = normalizeQuantity(requestedQuantity);
-                const availableQuantity = normalizeQuantity(availableByItem.get(item.itemIdProtheus) ?? 0);
                 if (!isValidQuantityForUnit(normalizedQuantity, item.unidade)) {
                     throw new QuantidadeInvalidaError();
                 }
-                if (normalizedQuantity > item.qtdTotal || normalizedQuantity > availableQuantity) {
+                if (normalizedQuantity > item.qtdTotal) {
                     throw new QuantidadeExcedeTotalError();
                 }
                 return {
@@ -164,7 +162,7 @@ export function createEntregaService({ courierGateway, deliveryGateway, document
             const motivoPendencia = finalStatus === 'finalizada_parcial' ? (input.motivoPendencia ?? null) : null;
             await deliveryGateway.updateDelivery({
                 documento: delivery.documentoNumero,
-                chaveAcesso: syncedQueue.documentoChave,
+                chaveAcesso: queueDocument.documentoChave,
                 filial: input.sessao.loja.codigo,
                 entregadorCodigo: delivery.entregadorCodigo,
                 entregadorNome: delivery.entregadorNome,
@@ -183,7 +181,7 @@ export function createEntregaService({ courierGateway, deliveryGateway, document
                 status: finalStatus,
                 motivoPendencia,
                 deliveredItems,
-                queueDocument: syncedQueue,
+                queueDocument,
             });
         },
     };

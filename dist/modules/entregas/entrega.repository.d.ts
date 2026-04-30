@@ -47,6 +47,7 @@ export declare function createEntregaRepository(): {
             qtdTotal: number;
         }>;
     }): Promise<IniciarEntregaResponse>;
+    cancelDelivery(entregaId: string): Promise<void>;
     finalizeDelivery(input: {
         entregaId: string;
         documentoNumero: string;
