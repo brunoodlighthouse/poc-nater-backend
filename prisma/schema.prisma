@@ -21,7 +21,6 @@ model Sessao {
   ultimaAtividadeEm DateTime @default(now()) @map("ultima_atividade_em") @db.Timestamptz
   revogadaEm       DateTime? @map("revogada_em") @db.Timestamptz
 
-  filaDocumentos FilaDocumento[]
   entregas       Entrega[]
 
   @@unique([dispositivoId], map: "uq_sessao_dispositivo_ativa")
@@ -46,10 +45,11 @@ model DocumentoProtheus {
 // ==========================================
 
 model Loja {
-  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo   String  @unique
-  nome     String
-  ativa    Boolean @default(true)
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo         String  @unique
+  nome           String
+  ativa          Boolean @default(true)
+  adminSenhaHash String? @map("admin_senha_hash")
 
   @@map("lojas")
 }
@@ -59,11 +59,13 @@ model Loja {
 // ==========================================
 
 model Entregador {
-  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo String  @unique
-  nome   String
-  ativo  Boolean @default(true)
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo     String  @unique
+  nome       String
+  lojaCodigo String  @map("loja_codigo")
+  ativo      Boolean @default(true)
 
+  @@index([lojaCodigo, ativo], map: "idx_entregador_loja_ativo")
   @@map("entregadores")
 }
 
@@ -73,7 +75,7 @@ model Entregador {
 
 model FilaDocumento {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sessaoId        String    @map("sessao_id") @db.Uuid
+  lojaCodigo      String    @map("loja_codigo")
   documentoNumero String    @map("documento_numero")
   documentoChave  String    @map("documento_chave")
   clienteNome     String    @map("cliente_nome")
@@ -83,9 +85,7 @@ model FilaDocumento {
   consultadoEm    DateTime  @default(now()) @map("consultado_em") @db.Timestamptz
   removidoEm      DateTime? @map("removido_em") @db.Timestamptz
 
-  sessao Sessao @relation(fields: [sessaoId], references: [id])
-
-  @@index([sessaoId, consultadoEm(sort: Desc)], map: "idx_fila_sessao_recente")
+  @@index([lojaCodigo, consultadoEm(sort: Desc)], map: "idx_fila_loja_recente")
   @@map("fila_documentos")
 }
 
@@ -131,30 +131,38 @@ model EntregaItem {
 }
 
 // ==========================================
+// Webhook - Notas recebidas do Protheus
+// ==========================================
+
+model NotaRecebida {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lojaCodigo      String   @map("loja_codigo")
+  documentoNumero String   @map("documento_numero")
+  chaveAcesso     String   @map("chave_acesso")
+  clienteNome     String   @map("cliente_nome")
+  clienteDocumento String  @map("cliente_documento")
+  tipoDocumento   String   @map("tipo_documento") // NFE | NFCE
+  qtdItens        Int      @map("qtd_itens")
+  valorTotal      Decimal  @map("valor_total") @db.Decimal(12, 2)
+  payload         Json
+  recebidaEm      DateTime @default(now()) @map("recebida_em") @db.Timestamptz
+
+  @@index([lojaCodigo, recebidaEm(sort: Desc)], map: "idx_nota_loja_recebida")
+  @@map("notas_recebidas")
+}
+
+// ==========================================
 // Modulo 8 - Administrativo
 // ==========================================
 
-model UsuarioAdmin {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuario         String    @unique
-  senhaHash       String    @map("senha_hash")
-  nome            String
-  ativo           Boolean   @default(true)
-  criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamptz
-  ultimoAcessoEm  DateTime? @map("ultimo_acesso_em") @db.Timestamptz
+model AdminSessao {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token      String    @unique
+  lojaCodigo String    @map("loja_codigo")
+  criadaEm   DateTime  @default(now()) @map("criada_em") @db.Timestamptz
+  revogadaEm DateTime? @map("revogada_em") @db.Timestamptz
 
-  @@map("usuarios_admin")
-}
-
-model TentativaLoginAdmin {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuario     String
-  ip          String
-  sucesso     Boolean
-  tentativaEm DateTime @default(now()) @map("tentativa_em") @db.Timestamptz
-
-  @@index([usuario, tentativaEm(sort: Desc)])
-  @@map("tentativas_login_admin")
+  @@map("admin_sessoes")
 }
 
 model LogAlteracao {

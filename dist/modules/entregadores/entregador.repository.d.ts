@@ -5,8 +5,8 @@ export type EntregadorRecord = {
     ativo: boolean;
 };
 export declare function createEntregadorRepository(): {
-    listActive(): Promise<EntregadorRecord[]>;
-    findByCode(codigo: string): Promise<EntregadorRecord>;
+    listActive(lojaCodigo: string): Promise<EntregadorRecord[]>;
+    findByCode(codigo: string, lojaCodigo: string): Promise<EntregadorRecord>;
 };
 export type EntregadorRepository = ReturnType<typeof createEntregadorRepository>;
 //# sourceMappingURL=entregador.repository.d.ts.map

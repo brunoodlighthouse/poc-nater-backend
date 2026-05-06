@@ -8,9 +8,9 @@ type EntregaServiceDependencies = {
     entregaRepository: EntregaRepository;
 };
 export declare function createEntregaService({ entregadorRepository, deliveryGateway, entregaRepository, }: EntregaServiceDependencies): {
-    listCouriers(): Promise<import("../entregadores/entregador.repository.js").EntregadorRecord[]>;
-    getDetail(sessaoId: string, documento: string): Promise<EntregaDetalheResponse>;
-    getPendingDeliveries(sessaoId: string, documento: string): Promise<{
+    listCouriers(lojaCodigo: string): Promise<import("../entregadores/entregador.repository.js").EntregadorRecord[]>;
+    getDetail(lojaCodigo: string, documento: string): Promise<EntregaDetalheResponse>;
+    getPendingDeliveries(lojaCodigo: string, documento: string): Promise<{
         documento: string;
         modo: "reentrega";
         itensPendentes: import("./entrega.types.js").EntregaDetalheItem[];

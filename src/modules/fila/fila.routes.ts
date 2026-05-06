@@ -44,7 +44,7 @@ export async function registerFilaRoutes(app: FastifyInstance, options: FilaRout
                 qtdItens: { type: 'integer' },
                 status: {
                   type: 'string',
-                  enum: ['pendente', 'parcial', 'finalizado', 'cancelado'],
+                  enum: ['pendente', 'em_andamento', 'parcial', 'finalizado', 'cancelado'],
                 },
                 consultadoEm: { type: 'string', format: 'date-time' },
                 tipoDocumento: { type: 'string', enum: ['NFE', 'NFCE'] },

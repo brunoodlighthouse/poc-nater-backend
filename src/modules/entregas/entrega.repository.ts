@@ -4,6 +4,7 @@ import type {
   EntregaDetalheResponse,
   EntregaEmAndamento,
   EntregaHistorico,
+  EntregaHistoricoLog,
   EntregaModo,
   FinalizarEntregaResponse,
   IniciarEntregaResponse,
@@ -11,12 +12,21 @@ import type {
 
 type QueueDocumentRecord = {
   id: string;
-  sessaoId: string;
+  lojaCodigo: string;
   documentoNumero: string;
   documentoChave: string;
   status: string;
   consultadoEm: Date;
   payloadProtheus: ProtheusDocumento;
+};
+
+type DeliveryLogRecord = {
+  id: string;
+  acao: string;
+  motivo: string;
+  dadosAntes: unknown;
+  dadosDepois: unknown;
+  realizadaEm: Date;
 };
 
 type DeliveryRecord = {
@@ -36,6 +46,7 @@ type DeliveryRecord = {
     qtdTotal: number;
     qtdEntregue: number;
   }>;
+  logsAlteracao: DeliveryLogRecord[];
 };
 
 function toJsonValue(document: ProtheusDocumento) {
@@ -74,6 +85,14 @@ function mapDeliveryRecord(entry: {
     qtdTotal: unknown;
     qtdEntregue: unknown;
   }>;
+  logsAlteracao?: Array<{
+    id: string;
+    acao: string;
+    motivo: string;
+    dadosAntes: unknown;
+    dadosDepois: unknown;
+    realizadaEm: Date;
+  }>;
 }): DeliveryRecord {
   return {
     id: entry.id,
@@ -92,12 +111,20 @@ function mapDeliveryRecord(entry: {
       qtdTotal: Number(item.qtdTotal),
       qtdEntregue: Number(item.qtdEntregue),
     })),
+    logsAlteracao: (entry.logsAlteracao ?? []).map((l) => ({
+      id: l.id,
+      acao: l.acao,
+      motivo: l.motivo,
+      dadosAntes: l.dadosAntes,
+      dadosDepois: l.dadosDepois,
+      realizadaEm: l.realizadaEm,
+    })),
   };
 }
 
 function mapQueueRecord(entry: {
   id: string;
-  sessaoId: string;
+  lojaCodigo: string;
   documentoNumero: string;
   documentoChave: string;
   status: string;
@@ -106,7 +133,7 @@ function mapQueueRecord(entry: {
 }): QueueDocumentRecord {
   return {
     id: entry.id,
-    sessaoId: entry.sessaoId,
+    lojaCodigo: entry.lojaCodigo,
     documentoNumero: entry.documentoNumero,
     documentoChave: entry.documentoChave,
     status: entry.status,
@@ -116,6 +143,15 @@ function mapQueueRecord(entry: {
 }
 
 function mapHistorico(entry: DeliveryRecord): EntregaHistorico {
+  const alteracoesAdmin: EntregaHistoricoLog[] = entry.logsAlteracao.map((l) => ({
+    id: l.id,
+    acao: l.acao,
+    motivo: l.motivo,
+    dadosAntes: l.dadosAntes,
+    dadosDepois: l.dadosDepois,
+    realizadaEm: l.realizadaEm.toISOString(),
+  }));
+
   return {
     id: entry.id,
     status: entry.status as EntregaHistorico['status'],
@@ -131,6 +167,7 @@ function mapHistorico(entry: DeliveryRecord): EntregaHistorico {
       qtdTotal: item.qtdTotal,
       qtdEntregue: item.qtdEntregue,
     })),
+    alteracoesAdmin,
   };
 }
 
@@ -156,10 +193,10 @@ function mapOpenDelivery(entry: DeliveryRecord, mode: EntregaModo): EntregaEmAnd
 
 export function createEntregaRepository() {
   return {
-    async findQueueDocumentByNumber(sessaoId: string, documentoNumero: string) {
+    async findQueueDocumentByNumber(lojaCodigo: string, documentoNumero: string) {
       const item = await prisma.filaDocumento.findFirst({
         where: {
-          sessaoId,
+          lojaCodigo,
           documentoNumero,
           removidoEm: null,
         },
@@ -172,12 +209,12 @@ export function createEntregaRepository() {
     },
 
     async syncQueueDocument(
-      sessaoId: string,
+      lojaCodigo: string,
       document: ProtheusDocumento,
     ): Promise<QueueDocumentRecord> {
       const consultadoEm = new Date();
       const existingItem = await prisma.filaDocumento.findFirst({
-        where: { sessaoId, documentoNumero: document.documento, removidoEm: null },
+        where: { lojaCodigo, documentoNumero: document.documento, removidoEm: null },
       });
 
       if (existingItem) {
@@ -197,7 +234,7 @@ export function createEntregaRepository() {
 
       const created = await prisma.filaDocumento.create({
         data: {
-          sessaoId,
+          lojaCodigo,
           documentoNumero: document.documento,
           documentoChave: document.chaveAcesso,
           clienteNome: document.cliente.nome,
@@ -219,6 +256,11 @@ export function createEntregaRepository() {
           itens: {
             orderBy: {
               itemIdProtheus: 'asc',
+            },
+          },
+          logsAlteracao: {
+            orderBy: {
+              realizadaEm: 'desc',
             },
           },
         },
@@ -280,41 +322,66 @@ export function createEntregaRepository() {
         qtdTotal: number;
       }>;
     }): Promise<IniciarEntregaResponse> {
-      const created = await prisma.entrega.create({
-        data: {
-          sessaoId: input.sessaoId,
-          documentoNumero: input.documentoNumero,
-          entregadorCodigo: input.entregadorCodigo,
-          entregadorNome: input.entregadorNome,
-          entregaAnteriorId: input.entregaAnteriorId,
-          itens: {
-            create: input.itens.map((item) => ({
-              itemIdProtheus: item.itemIdProtheus,
-              descricao: item.descricao,
-              unidade: item.unidade,
-              qtdTotal: item.qtdTotal,
-              qtdEntregue: 0,
-            })),
-          },
-        },
-        include: {
-          itens: {
-            orderBy: {
-              itemIdProtheus: 'asc',
+      const created = await prisma.$transaction(async (tx) => {
+        const entrega = await tx.entrega.create({
+          data: {
+            sessaoId: input.sessaoId,
+            documentoNumero: input.documentoNumero,
+            entregadorCodigo: input.entregadorCodigo,
+            entregadorNome: input.entregadorNome,
+            entregaAnteriorId: input.entregaAnteriorId,
+            itens: {
+              create: input.itens.map((item) => ({
+                itemIdProtheus: item.itemIdProtheus,
+                descricao: item.descricao,
+                unidade: item.unidade,
+                qtdTotal: item.qtdTotal,
+                qtdEntregue: 0,
+              })),
             },
           },
-        },
+          include: {
+            itens: {
+              orderBy: {
+                itemIdProtheus: 'asc',
+              },
+            },
+          },
+        });
+
+        await tx.filaDocumento.updateMany({
+          where: {
+            documentoNumero: input.documentoNumero,
+            removidoEm: null,
+          },
+          data: {
+            status: 'em_andamento',
+          },
+        });
+
+        return entrega;
       });
 
       return mapOpenDelivery(mapDeliveryRecord(created), input.mode);
     },
 
     async cancelDelivery(entregaId: string): Promise<void> {
-      await prisma.entrega.update({
+      const delivery = await prisma.entrega.update({
         where: { id: entregaId },
         data: {
           status: 'cancelada',
           finalizadaEm: new Date(),
+        },
+      });
+
+      await prisma.filaDocumento.updateMany({
+        where: {
+          documentoNumero: delivery.documentoNumero,
+          removidoEm: null,
+          status: 'em_andamento',
+        },
+        data: {
+          status: 'pendente',
         },
       });
     },

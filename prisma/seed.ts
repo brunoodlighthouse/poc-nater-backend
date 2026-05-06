@@ -1,22 +1,29 @@
 import { PrismaClient } from '@prisma/client';
+import { scryptSync, randomBytes } from 'node:crypto';
 
 const prisma = new PrismaClient();
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
 
 async function main() {
   console.log('Iniciando seed...');
 
-  // Lojas
+  // Lojas (senha admin padrao: admin001, admin002, admin003)
   const lojas = [
-    { codigo: '001', nome: 'Filial Centro', ativa: true },
-    { codigo: '002', nome: 'Filial Norte', ativa: true },
-    { codigo: '003', nome: 'Filial Sul', ativa: true },
-    { codigo: '999', nome: 'Filial Desativada', ativa: false },
+    { codigo: '001', nome: 'Filial Centro', ativa: true, adminSenhaHash: hashPassword('admin001') },
+    { codigo: '002', nome: 'Filial Norte', ativa: true, adminSenhaHash: hashPassword('admin002') },
+    { codigo: '003', nome: 'Filial Sul', ativa: true, adminSenhaHash: hashPassword('admin003') },
+    { codigo: '999', nome: 'Filial Desativada', ativa: false, adminSenhaHash: null },
   ];
 
   for (const loja of lojas) {
     await prisma.loja.upsert({
       where: { codigo: loja.codigo },
-      update: { nome: loja.nome, ativa: loja.ativa },
+      update: { nome: loja.nome, ativa: loja.ativa, adminSenhaHash: loja.adminSenhaHash },
       create: loja,
     });
   }
@@ -24,11 +31,11 @@ async function main() {
 
   // Entregadores
   const entregadores = [
-    { codigo: 'E0042', nome: 'Fredy Almeida', ativo: true },
-    { codigo: 'E0197', nome: 'Carlos Mota', ativo: true },
-    { codigo: 'E0255', nome: 'Luciana Prado', ativo: true },
-    { codigo: 'E0300', nome: 'Roberto Gomes', ativo: true },
-    { codigo: 'E0999', nome: 'Jose Inativo', ativo: false },
+    { codigo: 'E0042', nome: 'Fredy Almeida', lojaCodigo: '001', ativo: true },
+    { codigo: 'E0197', nome: 'Carlos Mota', lojaCodigo: '001', ativo: true },
+    { codigo: 'E0255', nome: 'Luciana Prado', lojaCodigo: '002', ativo: true },
+    { codigo: 'E0300', nome: 'Roberto Gomes', lojaCodigo: '002', ativo: true },
+    { codigo: 'E0999', nome: 'Jose Inativo', lojaCodigo: '001', ativo: false },
   ];
 
   for (const entregador of entregadores) {
@@ -222,23 +229,10 @@ async function main() {
   }
   console.log(`  ${documentos.length} documentos Protheus inseridos`);
 
-  // Sessao de demonstracao (para vincular fila_documentos)
-  const sessao = await prisma.sessao.upsert({
-    where: { dispositivoId: 'tablet-demo-001' },
-    update: {},
-    create: {
-      token: 'token-demo-seed-001',
-      lojaCodigo: '001',
-      lojaNome: 'Filial Centro',
-      dispositivoId: 'tablet-demo-001',
-    },
-  });
-  console.log('  1 sessao de demonstracao criada');
-
   // Fila de documentos
   const filaEntries = [
     {
-      sessaoId: sessao.id,
+      lojaCodigo: '001',
       documentoNumero: '123456',
       documentoChave: '35240114200166000187550010000001231234567890',
       clienteNome: 'Joao da Silva',
@@ -248,7 +242,7 @@ async function main() {
       consultadoEm: new Date(Date.now() - 2 * 60 * 1000), // 2 min atras
     },
     {
-      sessaoId: sessao.id,
+      lojaCodigo: '001',
       documentoNumero: '456789',
       documentoChave: '35240114200166000187550010000004561234567890',
       clienteNome: 'Maria Souza',
@@ -258,7 +252,7 @@ async function main() {
       consultadoEm: new Date(Date.now() - 18 * 60 * 1000), // 18 min atras
     },
     {
-      sessaoId: sessao.id,
+      lojaCodigo: '001',
       documentoNumero: '789123',
       documentoChave: '35240114200166000187550010000007891234567890',
       clienteNome: 'Carlos Pereira',
@@ -268,7 +262,7 @@ async function main() {
       consultadoEm: new Date(Date.now() - 45 * 60 * 1000), // 45 min atras
     },
     {
-      sessaoId: sessao.id,
+      lojaCodigo: '001',
       documentoNumero: '999000',
       documentoChave: '35240114200166000187550010000009991234567890',
       clienteNome: 'Ana Costa',
@@ -278,7 +272,7 @@ async function main() {
       consultadoEm: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3h atras
     },
     {
-      sessaoId: sessao.id,
+      lojaCodigo: '001',
       documentoNumero: '111222',
       documentoChave: '35240114200166000187550010000011111234567890',
       clienteNome: 'Pedro Santos',
@@ -295,7 +289,7 @@ async function main() {
         id: (
           await prisma.filaDocumento.findFirst({
             where: {
-              sessaoId: entry.sessaoId,
+              lojaCodigo: entry.lojaCodigo,
               documentoChave: entry.documentoChave,
             },
             select: { id: true },
@@ -311,6 +305,79 @@ async function main() {
     });
   }
   console.log(`  ${filaEntries.length} documentos na fila inseridos`);
+
+  // Notas recebidas hoje (simulam webhook do Protheus)
+  const hoje = new Date();
+  const notasRecebidas = [
+    {
+      lojaCodigo: '001',
+      documentoNumero: '123456',
+      chaveAcesso: '35240114200166000187550010000001231234567890',
+      clienteNome: 'Joao da Silva',
+      clienteDocumento: '12345678901',
+      tipoDocumento: 'NFE',
+      qtdItens: 3,
+      valorTotal: 4500.00,
+      payload: { origem: 'protheus_webhook' },
+      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 8, 15),
+    },
+    {
+      lojaCodigo: '001',
+      documentoNumero: '456789',
+      chaveAcesso: '35240114200166000187550010000004561234567890',
+      clienteNome: 'Maria Souza',
+      clienteDocumento: '98765432100',
+      tipoDocumento: 'NFCE',
+      qtdItens: 1,
+      valorTotal: 320.50,
+      payload: { origem: 'protheus_webhook' },
+      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 9, 30),
+    },
+    {
+      lojaCodigo: '001',
+      documentoNumero: '111222',
+      chaveAcesso: '35240114200166000187550010000011111234567890',
+      clienteNome: 'Pedro Santos',
+      clienteDocumento: '55566677788',
+      tipoDocumento: 'NFE',
+      qtdItens: 4,
+      valorTotal: 12750.00,
+      payload: { origem: 'protheus_webhook' },
+      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 10, 45),
+    },
+    {
+      lojaCodigo: '001',
+      documentoNumero: '333444',
+      chaveAcesso: '35240114200166000187550010000033341234567890',
+      clienteNome: 'Fernanda Lima',
+      clienteDocumento: '11122233344',
+      tipoDocumento: 'NFE',
+      qtdItens: 2,
+      valorTotal: 890.00,
+      payload: { origem: 'protheus_webhook' },
+      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 11, 20),
+    },
+    {
+      lojaCodigo: '002',
+      documentoNumero: '555666',
+      chaveAcesso: '35240114200166000187550010000055561234567890',
+      clienteNome: 'Ricardo Martins',
+      clienteDocumento: '99988877766',
+      tipoDocumento: 'NFCE',
+      qtdItens: 1,
+      valorTotal: 150.00,
+      payload: { origem: 'protheus_webhook' },
+      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 8, 50),
+    },
+  ];
+
+  // Limpa notas anteriores do seed para evitar duplicatas
+  await prisma.notaRecebida.deleteMany({});
+
+  for (const nota of notasRecebidas) {
+    await prisma.notaRecebida.create({ data: nota });
+  }
+  console.log(`  ${notasRecebidas.length} notas recebidas inseridas`);
 
   console.log('Seed concluido com sucesso!');
 }

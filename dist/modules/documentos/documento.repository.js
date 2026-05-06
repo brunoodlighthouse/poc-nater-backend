@@ -34,7 +34,7 @@ export function createDocumentoRepository({ documentGateway }) {
             const consultadoEm = new Date();
             const existingItem = await prisma.filaDocumento.findFirst({
                 where: {
-                    sessaoId: input.sessaoId,
+                    lojaCodigo: input.lojaCodigo,
                     documentoNumero: input.document.documento,
                     removidoEm: null,
                 },
@@ -57,7 +57,7 @@ export function createDocumentoRepository({ documentGateway }) {
             }
             const createdItem = await prisma.filaDocumento.create({
                 data: {
-                    sessaoId: input.sessaoId,
+                    lojaCodigo: input.lojaCodigo,
                     documentoNumero: input.document.documento,
                     documentoChave: input.document.chaveAcesso,
                     clienteNome: input.document.cliente.nome,

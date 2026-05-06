@@ -94,4 +94,24 @@ export class MotivoObrigatorioError extends DomainError {
         super('MOTIVO_OBRIGATORIO', 'Motivo e obrigatorio (minimo 10 caracteres)', 400);
     }
 }
+export class AdminCredenciaisInvalidasError extends DomainError {
+    constructor() {
+        super('ADMIN_CREDENCIAIS_INVALIDAS', 'Usuario ou senha invalidos', 401);
+    }
+}
+export class AdminSessaoInvalidaError extends DomainError {
+    constructor() {
+        super('ADMIN_SESSAO_INVALIDA', 'Sessao administrativa expirada ou invalida', 401);
+    }
+}
+export class LojaJaExisteError extends DomainError {
+    constructor() {
+        super('LOJA_JA_EXISTE', 'Ja existe uma loja com este codigo', 409);
+    }
+}
+export class EntregadorJaExisteError extends DomainError {
+    constructor() {
+        super('ENTREGADOR_JA_EXISTE', 'Ja existe um entregador com este codigo', 409);
+    }
+}
 //# sourceMappingURL=errors.js.map

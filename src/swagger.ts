@@ -107,6 +107,19 @@ export const entregaHistoricoItemSchema = {
   },
 };
 
+export const entregaHistoricoLogSchema = {
+  type: 'object',
+  required: ['id', 'acao', 'motivo', 'realizadaEm'],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    acao: { type: 'string' },
+    motivo: { type: 'string' },
+    dadosAntes: {},
+    dadosDepois: {},
+    realizadaEm: { type: 'string', format: 'date-time' },
+  },
+};
+
 export const entregaHistoricoSchema = {
   type: 'object',
   required: [
@@ -118,6 +131,7 @@ export const entregaHistoricoSchema = {
     'iniciadaEm',
     'finalizadaEm',
     'itens',
+    'alteracoesAdmin',
   ],
   properties: {
     id: { type: 'string', format: 'uuid' },
@@ -140,6 +154,10 @@ export const entregaHistoricoSchema = {
     itens: {
       type: 'array',
       items: entregaHistoricoItemSchema,
+    },
+    alteracoesAdmin: {
+      type: 'array',
+      items: entregaHistoricoLogSchema,
     },
   },
 };
@@ -205,6 +223,8 @@ export const swaggerOptions: FastifyDynamicSwaggerOptions = {
       { name: 'Documentos', description: 'Consulta de NF-e/NFC-e' },
       { name: 'Fila', description: 'Fila de documentos da sessao' },
       { name: 'Entregas', description: 'Execucao e finalizacao de entregas' },
+      { name: 'Notas Recebidas', description: 'Notas fiscais recebidas via webhook do Protheus' },
+      { name: 'Admin', description: 'Painel administrativo por loja' },
     ],
   },
 };

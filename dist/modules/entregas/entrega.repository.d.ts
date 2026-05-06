@@ -2,12 +2,20 @@ import type { ProtheusDocumento } from '../../integrations/protheus/documentos.j
 import type { EntregaDetalheResponse, EntregaModo, FinalizarEntregaResponse, IniciarEntregaResponse } from './entrega.types.js';
 type QueueDocumentRecord = {
     id: string;
-    sessaoId: string;
+    lojaCodigo: string;
     documentoNumero: string;
     documentoChave: string;
     status: string;
     consultadoEm: Date;
     payloadProtheus: ProtheusDocumento;
+};
+type DeliveryLogRecord = {
+    id: string;
+    acao: string;
+    motivo: string;
+    dadosAntes: unknown;
+    dadosDepois: unknown;
+    realizadaEm: Date;
 };
 type DeliveryRecord = {
     id: string;
@@ -26,10 +34,11 @@ type DeliveryRecord = {
         qtdTotal: number;
         qtdEntregue: number;
     }>;
+    logsAlteracao: DeliveryLogRecord[];
 };
 export declare function createEntregaRepository(): {
-    findQueueDocumentByNumber(sessaoId: string, documentoNumero: string): Promise<QueueDocumentRecord | null>;
-    syncQueueDocument(sessaoId: string, document: ProtheusDocumento): Promise<QueueDocumentRecord>;
+    findQueueDocumentByNumber(lojaCodigo: string, documentoNumero: string): Promise<QueueDocumentRecord | null>;
+    syncQueueDocument(lojaCodigo: string, document: ProtheusDocumento): Promise<QueueDocumentRecord>;
     listDeliveryHistory(documentoNumero: string): Promise<DeliveryRecord[]>;
     findOpenDeliveryByDocument(documentoNumero: string): Promise<DeliveryRecord | null>;
     findDeliveryById(entregaId: string, sessaoId: string): Promise<DeliveryRecord | null>;

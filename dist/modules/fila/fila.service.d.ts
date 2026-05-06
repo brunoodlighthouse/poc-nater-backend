@@ -3,7 +3,7 @@ type FilaServiceDependencies = {
     filaRepository: FilaRepository;
 };
 export declare function createFilaService({ filaRepository }: FilaServiceDependencies): {
-    listQueue(sessaoId: string): Promise<import("./fila.types.js").FilaDocumento[]>;
+    listQueue(lojaCodigo: string): Promise<import("./fila.types.js").FilaDocumento[]>;
 };
 export type FilaService = ReturnType<typeof createFilaService>;
 export {};

@@ -6,8 +6,8 @@ type FilaServiceDependencies = {
 
 export function createFilaService({ filaRepository }: FilaServiceDependencies) {
   return {
-    async listQueue(sessaoId: string) {
-      return filaRepository.listRecentBySession(sessaoId);
+    async listQueue(lojaCodigo: string) {
+      return filaRepository.listAllByLoja(lojaCodigo);
     },
   };
 }

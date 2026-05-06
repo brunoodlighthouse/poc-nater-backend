@@ -24,7 +24,7 @@ function extractAccessKeyFromBarcode(codigoLido) {
 export function createDocumentoService({ documentoRepository }) {
     return {
         async consultDocument(input) {
-            const saveArgs = { sessaoId: input.sessao.id };
+            const saveArgs = { lojaCodigo: input.sessao.loja.codigo };
             const lookupArgs = { filial: input.sessao.loja.codigo, correlationId: input.correlationId };
             if (input.formato === 'numero') {
                 const chave = input.codigoLido.trim();

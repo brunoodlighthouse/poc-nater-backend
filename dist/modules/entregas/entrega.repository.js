@@ -32,12 +32,20 @@ function mapDeliveryRecord(entry) {
             qtdTotal: Number(item.qtdTotal),
             qtdEntregue: Number(item.qtdEntregue),
         })),
+        logsAlteracao: (entry.logsAlteracao ?? []).map((l) => ({
+            id: l.id,
+            acao: l.acao,
+            motivo: l.motivo,
+            dadosAntes: l.dadosAntes,
+            dadosDepois: l.dadosDepois,
+            realizadaEm: l.realizadaEm,
+        })),
     };
 }
 function mapQueueRecord(entry) {
     return {
         id: entry.id,
-        sessaoId: entry.sessaoId,
+        lojaCodigo: entry.lojaCodigo,
         documentoNumero: entry.documentoNumero,
         documentoChave: entry.documentoChave,
         status: entry.status,
@@ -46,6 +54,14 @@ function mapQueueRecord(entry) {
     };
 }
 function mapHistorico(entry) {
+    const alteracoesAdmin = entry.logsAlteracao.map((l) => ({
+        id: l.id,
+        acao: l.acao,
+        motivo: l.motivo,
+        dadosAntes: l.dadosAntes,
+        dadosDepois: l.dadosDepois,
+        realizadaEm: l.realizadaEm.toISOString(),
+    }));
     return {
         id: entry.id,
         status: entry.status,
@@ -61,6 +77,7 @@ function mapHistorico(entry) {
             qtdTotal: item.qtdTotal,
             qtdEntregue: item.qtdEntregue,
         })),
+        alteracoesAdmin,
     };
 }
 function mapOpenDelivery(entry, mode) {
@@ -84,10 +101,10 @@ function mapOpenDelivery(entry, mode) {
 }
 export function createEntregaRepository() {
     return {
-        async findQueueDocumentByNumber(sessaoId, documentoNumero) {
+        async findQueueDocumentByNumber(lojaCodigo, documentoNumero) {
             const item = await prisma.filaDocumento.findFirst({
                 where: {
-                    sessaoId,
+                    lojaCodigo,
                     documentoNumero,
                     removidoEm: null,
                 },
@@ -97,10 +114,10 @@ export function createEntregaRepository() {
             });
             return item ? mapQueueRecord(item) : null;
         },
-        async syncQueueDocument(sessaoId, document) {
+        async syncQueueDocument(lojaCodigo, document) {
             const consultadoEm = new Date();
             const existingItem = await prisma.filaDocumento.findFirst({
-                where: { sessaoId, documentoNumero: document.documento, removidoEm: null },
+                where: { lojaCodigo, documentoNumero: document.documento, removidoEm: null },
             });
             if (existingItem) {
                 const updated = await prisma.filaDocumento.update({
@@ -118,7 +135,7 @@ export function createEntregaRepository() {
             }
             const created = await prisma.filaDocumento.create({
                 data: {
-                    sessaoId,
+                    lojaCodigo,
                     documentoNumero: document.documento,
                     documentoChave: document.chaveAcesso,
                     clienteNome: document.cliente.nome,
@@ -139,6 +156,11 @@ export function createEntregaRepository() {
                     itens: {
                         orderBy: {
                             itemIdProtheus: 'asc',
+                        },
+                    },
+                    logsAlteracao: {
+                        orderBy: {
+                            realizadaEm: 'desc',
                         },
                     },
                 },

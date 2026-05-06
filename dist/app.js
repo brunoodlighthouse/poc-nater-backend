@@ -25,6 +25,10 @@ import { createEntregaController } from './modules/entregas/entrega.controller.j
 import { createEntregaRepository } from './modules/entregas/entrega.repository.js';
 import { registerEntregaRoutes } from './modules/entregas/entrega.routes.js';
 import { createEntregaService } from './modules/entregas/entrega.service.js';
+import { createAdminController } from './modules/admin/admin.controller.js';
+import { createAdminRepository } from './modules/admin/admin.repository.js';
+import { registerAdminRoutes } from './modules/admin/admin.routes.js';
+import { createAdminService } from './modules/admin/admin.service.js';
 import { createSessaoController } from './modules/sessoes/sessao.controller.js';
 import { createSessaoRepository } from './modules/sessoes/sessao.repository.js';
 import { registerSessaoRoutes } from './modules/sessoes/sessao.routes.js';
@@ -37,6 +41,7 @@ export function buildApp() {
         disableRequestLogging: true,
         requestIdHeader: 'x-correlation-id',
     });
+    console.log('🚀 ~ buildApp ~ process.env.DATABASE_URL:', process.env['DATABASE_URL']);
     const documentGateway = createDocumentGateway();
     const entregadorRepository = createEntregadorRepository();
     const deliveryGateway = createDeliveryGateway();
@@ -63,10 +68,13 @@ export function buildApp() {
         deliveryGateway,
         entregaRepository,
     });
+    const adminRepository = createAdminRepository();
+    const adminService = createAdminService({ adminRepository });
     const sessaoController = createSessaoController({ sessaoService });
     const documentoController = createDocumentoController({ documentoService });
     const filaController = createFilaController({ filaService });
     const entregaController = createEntregaController({ entregaService });
+    const adminController = createAdminController({ adminService });
     app.register(swagger, swaggerOptions);
     app.register(swaggerUi, swaggerUiOptions);
     app.register(cors, {
@@ -188,6 +196,10 @@ export function buildApp() {
         prefix: '/api/v1/entregas',
         controller: entregaController,
         sessaoController,
+    });
+    app.register(registerAdminRoutes, {
+        prefix: '/api/v1/admin',
+        controller: adminController,
     });
     app.setErrorHandler((error, request, reply) => {
         request.log.error({ err: error }, 'Erro nao tratado');

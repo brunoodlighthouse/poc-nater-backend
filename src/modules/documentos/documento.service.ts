@@ -42,7 +42,7 @@ function extractAccessKeyFromBarcode(codigoLido: string): string {
 export function createDocumentoService({ documentoRepository }: DocumentoServiceDependencies) {
   return {
     async consultDocument(input: DocumentoConsultaInput) {
-      const saveArgs = { sessaoId: input.sessao.id };
+      const saveArgs = { lojaCodigo: input.sessao.loja.codigo };
       const lookupArgs = { filial: input.sessao.loja.codigo, correlationId: input.correlationId };
 
       if (input.formato === 'numero') {

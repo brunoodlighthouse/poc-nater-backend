@@ -25,6 +25,14 @@ import { createEntregaController } from './modules/entregas/entrega.controller.j
 import { createEntregaRepository } from './modules/entregas/entrega.repository.js';
 import { registerEntregaRoutes } from './modules/entregas/entrega.routes.js';
 import { createEntregaService } from './modules/entregas/entrega.service.js';
+import { createAdminController } from './modules/admin/admin.controller.js';
+import { createAdminRepository } from './modules/admin/admin.repository.js';
+import { registerAdminRoutes } from './modules/admin/admin.routes.js';
+import { createAdminService } from './modules/admin/admin.service.js';
+import { createNotaRecebidaController } from './modules/notas-recebidas/nota-recebida.controller.js';
+import { createNotaRecebidaRepository } from './modules/notas-recebidas/nota-recebida.repository.js';
+import { registerNotaRecebidaRoutes } from './modules/notas-recebidas/nota-recebida.routes.js';
+import { createNotaRecebidaService } from './modules/notas-recebidas/nota-recebida.service.js';
 import { createSessaoController } from './modules/sessoes/sessao.controller.js';
 import { createSessaoRepository } from './modules/sessoes/sessao.repository.js';
 import { registerSessaoRoutes } from './modules/sessoes/sessao.routes.js';
@@ -74,10 +82,16 @@ export function buildApp() {
     deliveryGateway,
     entregaRepository,
   });
+  const notaRecebidaRepository = createNotaRecebidaRepository();
+  const notaRecebidaService = createNotaRecebidaService({ notaRecebidaRepository });
+  const adminRepository = createAdminRepository();
+  const adminService = createAdminService({ adminRepository });
   const sessaoController = createSessaoController({ sessaoService });
   const documentoController = createDocumentoController({ documentoService });
   const filaController = createFilaController({ filaService });
   const entregaController = createEntregaController({ entregaService });
+  const notaRecebidaController = createNotaRecebidaController({ notaRecebidaService });
+  const adminController = createAdminController({ adminService });
 
   app.register(swagger, swaggerOptions);
   app.register(swaggerUi, swaggerUiOptions);
@@ -218,6 +232,17 @@ export function buildApp() {
     prefix: '/api/v1/entregas',
     controller: entregaController,
     sessaoController,
+  });
+
+  app.register(registerNotaRecebidaRoutes, {
+    prefix: '/api/v1/notas-recebidas',
+    controller: notaRecebidaController,
+    sessaoController,
+  });
+
+  app.register(registerAdminRoutes, {
+    prefix: '/api/v1/admin',
+    controller: adminController,
   });
 
   app.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {

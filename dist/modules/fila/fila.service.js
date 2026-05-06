@@ -1,7 +1,7 @@
 export function createFilaService({ filaRepository }) {
     return {
-        async listQueue(sessaoId) {
-            return filaRepository.listRecentBySession(sessaoId);
+        async listQueue(lojaCodigo) {
+            return filaRepository.listRecentByLoja(lojaCodigo);
         },
     };
 }

@@ -15,8 +15,8 @@ function normalizeQuantity(quantity) {
     return Math.round(quantity * 1000) / 1000;
 }
 export function createEntregaService({ entregadorRepository, deliveryGateway, entregaRepository, }) {
-    async function loadDetail(sessaoId, documento) {
-        const queueDocument = await entregaRepository.findQueueDocumentByNumber(sessaoId, documento);
+    async function loadDetail(lojaCodigo, documento) {
+        const queueDocument = await entregaRepository.findQueueDocumentByNumber(lojaCodigo, documento);
         if (!queueDocument) {
             throw new DocumentoNaoNaFilaError();
         }
@@ -31,14 +31,14 @@ export function createEntregaService({ entregadorRepository, deliveryGateway, en
         });
     }
     return {
-        async listCouriers() {
-            return entregadorRepository.listActive();
+        async listCouriers(lojaCodigo) {
+            return entregadorRepository.listActive(lojaCodigo);
         },
-        async getDetail(sessaoId, documento) {
-            return loadDetail(sessaoId, documento);
+        async getDetail(lojaCodigo, documento) {
+            return loadDetail(lojaCodigo, documento);
         },
-        async getPendingDeliveries(sessaoId, documento) {
-            const detail = await loadDetail(sessaoId, documento);
+        async getPendingDeliveries(lojaCodigo, documento) {
+            const detail = await loadDetail(lojaCodigo, documento);
             const itensPendentes = detail.itens.filter((item) => item.qtdPendente > 0);
             if (itensPendentes.length === 0) {
                 throw new EntregaSemPendenciasError();
@@ -51,7 +51,7 @@ export function createEntregaService({ entregadorRepository, deliveryGateway, en
             };
         },
         async startDelivery(input) {
-            const queueDocument = await entregaRepository.findQueueDocumentByNumber(input.sessao.id, input.documento);
+            const queueDocument = await entregaRepository.findQueueDocumentByNumber(input.sessao.loja.codigo, input.documento);
             if (!queueDocument) {
                 throw new DocumentoNaoNaFilaError();
             }
@@ -60,7 +60,7 @@ export function createEntregaService({ entregadorRepository, deliveryGateway, en
                 throw new EntregaJaEmAndamentoError(openDelivery.entregadorNome);
             }
             const [courier, history] = await Promise.all([
-                entregadorRepository.findByCode(input.entregadorCodigo),
+                entregadorRepository.findByCode(input.entregadorCodigo, input.sessao.loja.codigo),
                 entregaRepository.listDeliveryHistory(input.documento),
             ]);
             // Calcula quantidade já entregue por item a partir do histórico local
@@ -112,7 +112,7 @@ export function createEntregaService({ entregadorRepository, deliveryGateway, en
             if (!delivery) {
                 throw new EntregaNaoEncontradaError();
             }
-            const queueDocument = await entregaRepository.findQueueDocumentByNumber(input.sessao.id, delivery.documentoNumero);
+            const queueDocument = await entregaRepository.findQueueDocumentByNumber(input.sessao.loja.codigo, delivery.documentoNumero);
             if (!queueDocument) {
                 throw new DocumentoNaoNaFilaError();
             }

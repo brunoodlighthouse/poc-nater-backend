@@ -5,16 +5,16 @@ function mapEntregador(entry) {
 }
 export function createEntregadorRepository() {
     return {
-        async listActive() {
+        async listActive(lojaCodigo) {
             const rows = await prisma.entregador.findMany({
-                where: { ativo: true },
+                where: { lojaCodigo, ativo: true },
                 orderBy: { nome: 'asc' },
             });
             return rows.map(mapEntregador);
         },
-        async findByCode(codigo) {
+        async findByCode(codigo, lojaCodigo) {
             const row = await prisma.entregador.findFirst({
-                where: { codigo, ativo: true },
+                where: { codigo, lojaCodigo, ativo: true },
             });
             if (!row)
                 throw new EntregadorNaoEncontradoError();

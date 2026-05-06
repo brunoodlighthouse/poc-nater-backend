@@ -19,17 +19,17 @@ function mapEntregador(entry: {
 
 export function createEntregadorRepository() {
   return {
-    async listActive(): Promise<EntregadorRecord[]> {
+    async listActive(lojaCodigo: string): Promise<EntregadorRecord[]> {
       const rows = await prisma.entregador.findMany({
-        where: { ativo: true },
+        where: { lojaCodigo, ativo: true },
         orderBy: { nome: 'asc' },
       });
       return rows.map(mapEntregador);
     },
 
-    async findByCode(codigo: string): Promise<EntregadorRecord> {
+    async findByCode(codigo: string, lojaCodigo: string): Promise<EntregadorRecord> {
       const row = await prisma.entregador.findFirst({
-        where: { codigo, ativo: true },
+        where: { codigo, lojaCodigo, ativo: true },
       });
       if (!row) throw new EntregadorNaoEncontradoError();
       return mapEntregador(row);

@@ -44,7 +44,7 @@ describe('createEntregaService', () => {
 
     vi.mocked(repository.findQueueDocumentByNumber).mockResolvedValue({
       id: 'fila-1',
-      sessaoId: 'sessao-1',
+      lojaCodigo: '001',
       documentoNumero: '456789',
       documentoChave: '35240114200166000187550010000004561234567890',
       status: 'parcial',
@@ -167,7 +167,7 @@ describe('createEntregaService', () => {
 
     vi.mocked(repository.findDeliveryById).mockResolvedValue({
       id: 'entrega-1',
-      sessaoId: 'sessao-1',
+      lojaCodigo: '001',
       documentoNumero: '123456',
       entregadorCodigo: 'E0042',
       entregadorNome: 'Fredy Almeida',
@@ -187,7 +187,7 @@ describe('createEntregaService', () => {
     });
     vi.mocked(repository.findQueueDocumentByNumber).mockResolvedValue({
       id: 'fila-1',
-      sessaoId: 'sessao-1',
+      lojaCodigo: '001',
       documentoNumero: '123456',
       documentoChave: '35240114200166000187550010000001231234567890',
       status: 'pendente',

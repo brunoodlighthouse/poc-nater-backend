@@ -147,6 +147,28 @@ export declare const entregaHistoricoItemSchema: {
         };
     };
 };
+export declare const entregaHistoricoLogSchema: {
+    type: string;
+    required: string[];
+    properties: {
+        id: {
+            type: string;
+            format: string;
+        };
+        acao: {
+            type: string;
+        };
+        motivo: {
+            type: string;
+        };
+        dadosAntes: {};
+        dadosDepois: {};
+        realizadaEm: {
+            type: string;
+            format: string;
+        };
+    };
+};
 export declare const entregaHistoricoSchema: {
     type: string;
     required: string[];
@@ -207,6 +229,31 @@ export declare const entregaHistoricoSchema: {
                     };
                     qtdEntregue: {
                         type: string;
+                    };
+                };
+            };
+        };
+        alteracoesAdmin: {
+            type: string;
+            items: {
+                type: string;
+                required: string[];
+                properties: {
+                    id: {
+                        type: string;
+                        format: string;
+                    };
+                    acao: {
+                        type: string;
+                    };
+                    motivo: {
+                        type: string;
+                    };
+                    dadosAntes: {};
+                    dadosDepois: {};
+                    realizadaEm: {
+                        type: string;
+                        format: string;
                     };
                 };
             };

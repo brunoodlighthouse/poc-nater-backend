@@ -40,15 +40,11 @@ function mapFilaItem(input: {
 
 export function createFilaRepository() {
   return {
-    async listRecentBySession(sessaoId: string) {
-      const ttlStart = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    async listAllByLoja(lojaCodigo: string) {
       const items = await prisma.filaDocumento.findMany({
         where: {
-          sessaoId,
+          lojaCodigo,
           removidoEm: null,
-          consultadoEm: {
-            gte: ttlStart,
-          },
         },
         orderBy: {
           consultadoEm: 'desc',

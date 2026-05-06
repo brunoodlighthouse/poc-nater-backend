@@ -51,4 +51,16 @@ export declare class EntregaNaoPodeSerCanceladaError extends DomainError {
 export declare class MotivoObrigatorioError extends DomainError {
     constructor();
 }
+export declare class AdminCredenciaisInvalidasError extends DomainError {
+    constructor();
+}
+export declare class AdminSessaoInvalidaError extends DomainError {
+    constructor();
+}
+export declare class LojaJaExisteError extends DomainError {
+    constructor();
+}
+export declare class EntregadorJaExisteError extends DomainError {
+    constructor();
+}
 //# sourceMappingURL=errors.d.ts.map

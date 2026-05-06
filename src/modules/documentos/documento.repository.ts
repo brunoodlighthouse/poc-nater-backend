@@ -51,13 +51,13 @@ export function createDocumentoRepository({ documentGateway }: DocumentoReposito
     },
 
     async saveToQueue(input: {
-      sessaoId: string;
+      lojaCodigo: string;
       document: ProtheusDocumento;
     }): Promise<DocumentoConsultado> {
       const consultadoEm = new Date();
       const existingItem = await prisma.filaDocumento.findFirst({
         where: {
-          sessaoId: input.sessaoId,
+          lojaCodigo: input.lojaCodigo,
           documentoNumero: input.document.documento,
           removidoEm: null,
         },
@@ -83,7 +83,7 @@ export function createDocumentoRepository({ documentGateway }: DocumentoReposito
 
       const createdItem = await prisma.filaDocumento.create({
         data: {
-          sessaoId: input.sessaoId,
+          lojaCodigo: input.lojaCodigo,
           documentoNumero: input.document.documento,
           documentoChave: input.document.chaveAcesso,
           clienteNome: input.document.cliente.nome,

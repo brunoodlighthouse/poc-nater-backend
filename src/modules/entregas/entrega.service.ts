@@ -49,8 +49,8 @@ export function createEntregaService({
   deliveryGateway,
   entregaRepository,
 }: EntregaServiceDependencies) {
-  async function loadDetail(sessaoId: string, documento: string): Promise<EntregaDetalheResponse> {
-    const queueDocument = await entregaRepository.findQueueDocumentByNumber(sessaoId, documento);
+  async function loadDetail(lojaCodigo: string, documento: string): Promise<EntregaDetalheResponse> {
+    const queueDocument = await entregaRepository.findQueueDocumentByNumber(lojaCodigo, documento);
 
     if (!queueDocument) {
       throw new DocumentoNaoNaFilaError();
@@ -69,16 +69,16 @@ export function createEntregaService({
   }
 
   return {
-    async listCouriers() {
-      return entregadorRepository.listActive();
+    async listCouriers(lojaCodigo: string) {
+      return entregadorRepository.listActive(lojaCodigo);
     },
 
-    async getDetail(sessaoId: string, documento: string): Promise<EntregaDetalheResponse> {
-      return loadDetail(sessaoId, documento);
+    async getDetail(lojaCodigo: string, documento: string): Promise<EntregaDetalheResponse> {
+      return loadDetail(lojaCodigo, documento);
     },
 
-    async getPendingDeliveries(sessaoId: string, documento: string) {
-      const detail = await loadDetail(sessaoId, documento);
+    async getPendingDeliveries(lojaCodigo: string, documento: string) {
+      const detail = await loadDetail(lojaCodigo, documento);
       const itensPendentes = detail.itens.filter((item) => item.qtdPendente > 0);
 
       if (itensPendentes.length === 0) {
@@ -95,7 +95,7 @@ export function createEntregaService({
 
     async startDelivery(input: IniciarEntregaInput) {
       const queueDocument = await entregaRepository.findQueueDocumentByNumber(
-        input.sessao.id,
+        input.sessao.loja.codigo,
         input.documento,
       );
 
@@ -110,7 +110,7 @@ export function createEntregaService({
       }
 
       const [courier, history] = await Promise.all([
-        entregadorRepository.findByCode(input.entregadorCodigo),
+        entregadorRepository.findByCode(input.entregadorCodigo, input.sessao.loja.codigo),
         entregaRepository.listDeliveryHistory(input.documento),
       ]);
 
@@ -179,7 +179,7 @@ export function createEntregaService({
       }
 
       const queueDocument = await entregaRepository.findQueueDocumentByNumber(
-        input.sessao.id,
+        input.sessao.loja.codigo,
         delivery.documentoNumero,
       );
 

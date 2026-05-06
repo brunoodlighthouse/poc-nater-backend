@@ -11,7 +11,7 @@ export declare function createDocumentoRepository({ documentGateway }: Documento
     }): Promise<ProtheusDocumento>;
     findInQueueByChave(chaveAcesso: string): Promise<ProtheusDocumento | null>;
     saveToQueue(input: {
-        sessaoId: string;
+        lojaCodigo: string;
         document: ProtheusDocumento;
     }): Promise<DocumentoConsultado>;
 };
