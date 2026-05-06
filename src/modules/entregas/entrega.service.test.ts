@@ -21,6 +21,7 @@ function createDeliveryGatewayMock(): DeliveryGateway {
 function createRepositoryMock(): EntregaRepository {
   return {
     findQueueDocumentByNumber: vi.fn(),
+    syncQueueDocument: vi.fn(),
     listDeliveryHistory: vi.fn(),
     findOpenDeliveryByDocument: vi.fn(),
     findDeliveryById: vi.fn(),

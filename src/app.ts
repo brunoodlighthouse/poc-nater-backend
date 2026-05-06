@@ -17,10 +17,6 @@ import { createDocumentoController } from './modules/documentos/documento.contro
 import { createDocumentoRepository } from './modules/documentos/documento.repository.js';
 import { registerDocumentoRoutes } from './modules/documentos/documento.routes.js';
 import { createDocumentoService } from './modules/documentos/documento.service.js';
-import { createFilaController } from './modules/fila/fila.controller.js';
-import { createFilaRepository } from './modules/fila/fila.repository.js';
-import { registerFilaRoutes } from './modules/fila/fila.routes.js';
-import { createFilaService } from './modules/fila/fila.service.js';
 import { createEntregaController } from './modules/entregas/entrega.controller.js';
 import { createEntregaRepository } from './modules/entregas/entrega.repository.js';
 import { registerEntregaRoutes } from './modules/entregas/entrega.routes.js';
@@ -54,8 +50,6 @@ export function buildApp() {
     requestIdHeader: 'x-correlation-id',
   });
 
-  console.log('🚀 ~ buildApp ~ process.env.DATABASE_URL:', process.env['DATABASE_URL'])
-
   const documentGateway = createDocumentGateway();
   const entregadorRepository = createEntregadorRepository();
   const deliveryGateway = createDeliveryGateway();
@@ -63,7 +57,6 @@ export function buildApp() {
   const documentoRepository = createDocumentoRepository({
     documentGateway,
   });
-  const filaRepository = createFilaRepository();
   const entregaRepository = createEntregaRepository();
   const lojaRepository = createLojaRepository();
   const sessaoService = createSessaoService({
@@ -73,9 +66,6 @@ export function buildApp() {
   });
   const documentoService = createDocumentoService({
     documentoRepository,
-  });
-  const filaService = createFilaService({
-    filaRepository,
   });
   const entregaService = createEntregaService({
     entregadorRepository,
@@ -88,7 +78,6 @@ export function buildApp() {
   const adminService = createAdminService({ adminRepository });
   const sessaoController = createSessaoController({ sessaoService });
   const documentoController = createDocumentoController({ documentoService });
-  const filaController = createFilaController({ filaService });
   const entregaController = createEntregaController({ entregaService });
   const notaRecebidaController = createNotaRecebidaController({ notaRecebidaService });
   const adminController = createAdminController({ adminService });
@@ -222,12 +211,6 @@ export function buildApp() {
     sessaoController,
   });
 
-  app.register(registerFilaRoutes, {
-    prefix: '/api/v1/fila',
-    controller: filaController,
-    sessaoController,
-  });
-
   app.register(registerEntregaRoutes, {
     prefix: '/api/v1/entregas',
     controller: entregaController,
@@ -237,7 +220,6 @@ export function buildApp() {
   app.register(registerNotaRecebidaRoutes, {
     prefix: '/api/v1/notas-recebidas',
     controller: notaRecebidaController,
-    sessaoController,
   });
 
   app.register(registerAdminRoutes, {

@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../db/connection.js';
 import type { DocumentGateway, ProtheusDocumento } from '../../integrations/protheus/documentos.js';
 import type { DocumentoConsultado } from './documento.types.js';
@@ -29,7 +30,7 @@ function mapDocumentToResponse(
 
 export function createDocumentoRepository({ documentGateway }: DocumentoRepositoryDependencies) {
   function toJsonValue(document: ProtheusDocumento) {
-    return JSON.parse(JSON.stringify(document)) as ProtheusDocumento;
+    return JSON.parse(JSON.stringify(document)) as Prisma.InputJsonValue;
   }
 
   return {
@@ -41,21 +42,22 @@ export function createDocumentoRepository({ documentGateway }: DocumentoReposito
       return documentGateway.findDocumentByAccessKey(input);
     },
 
-    async findInQueueByChave(chaveAcesso: string): Promise<ProtheusDocumento | null> {
-      const item = await prisma.filaDocumento.findFirst({
-        where: { documentoChave: chaveAcesso, removidoEm: null },
-        orderBy: { consultadoEm: 'desc' },
+    async findByChaveAcesso(chaveAcesso: string): Promise<ProtheusDocumento | null> {
+      const item = await prisma.documento.findFirst({
+        where: { chaveAcesso, removidoEm: null },
+        orderBy: { recebidoEm: 'desc' },
       });
       if (!item) return null;
-      return item.payloadProtheus as ProtheusDocumento;
+      return item.payload as unknown as ProtheusDocumento;
     },
 
-    async saveToQueue(input: {
+    async saveToDocumentos(input: {
       lojaCodigo: string;
       document: ProtheusDocumento;
     }): Promise<DocumentoConsultado> {
       const consultadoEm = new Date();
-      const existingItem = await prisma.filaDocumento.findFirst({
+
+      const existing = await prisma.documento.findFirst({
         where: {
           lojaCodigo: input.lojaCodigo,
           documentoNumero: input.document.documento,
@@ -63,38 +65,61 @@ export function createDocumentoRepository({ documentGateway }: DocumentoReposito
         },
       });
 
-      if (existingItem) {
-        const updatedItem = await prisma.filaDocumento.update({
-          where: {
-            id: existingItem.id,
-          },
+      if (existing) {
+        const updated = await prisma.documento.update({
+          where: { id: existing.id },
           data: {
-            documentoChave: input.document.chaveAcesso,
+            chaveAcesso: input.document.chaveAcesso,
             clienteNome: input.document.cliente.nome,
+            clienteDocumento: input.document.cliente.documento,
+            tipoDocumento: input.document.tipo,
             qtdItens: input.document.itens.length,
-            // status preservado: gerenciado pelas operações de entrega, não pelo Protheus
-            payloadProtheus: toJsonValue(input.document),
+            payload: toJsonValue(input.document),
             consultadoEm,
           },
         });
 
-        return mapDocumentToResponse(input.document, updatedItem.consultadoEm);
+        return mapDocumentToResponse(input.document, updated.consultadoEm!);
       }
 
-      const createdItem = await prisma.filaDocumento.create({
+      const created = await prisma.documento.create({
         data: {
           lojaCodigo: input.lojaCodigo,
           documentoNumero: input.document.documento,
-          documentoChave: input.document.chaveAcesso,
+          chaveAcesso: input.document.chaveAcesso,
+          tipoDocumento: input.document.tipo,
           clienteNome: input.document.cliente.nome,
+          clienteDocumento: input.document.cliente.documento,
           qtdItens: input.document.itens.length,
           status: mapDocumentStatus(input.document.statusAtual),
-          payloadProtheus: toJsonValue(input.document),
+          payload: toJsonValue(input.document),
+          origem: 'consulta',
           consultadoEm,
         },
       });
 
-      return mapDocumentToResponse(input.document, createdItem.consultadoEm);
+      return mapDocumentToResponse(input.document, created.consultadoEm!);
+    },
+
+    async listAllByLoja(lojaCodigo: string) {
+      return prisma.documento.findMany({
+        where: { lojaCodigo, removidoEm: null },
+        orderBy: { recebidoEm: 'desc' },
+      });
+    },
+
+    async listTodayByLoja(lojaCodigo: string) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      return prisma.documento.findMany({
+        where: {
+          lojaCodigo,
+          removidoEm: null,
+          recebidoEm: { gte: startOfDay },
+        },
+        orderBy: { recebidoEm: 'desc' },
+      });
     },
   };
 }

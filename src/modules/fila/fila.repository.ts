@@ -1,3 +1,8 @@
+// DEPRECATED: This module has been replaced by the unified documentos module.
+// Kept for reference only. All functionality moved to:
+// - documento.repository.ts (listAllByLoja, listTodayByLoja)
+// - documento.service.ts (listDocumentos, listNotasHoje)
+
 import { prisma } from '../../db/connection.js';
 import type { FilaDocumento } from './fila.types.js';
 
@@ -11,14 +16,15 @@ type QueuePayload = {
 function mapFilaItem(input: {
   id: string;
   documentoNumero: string;
-  documentoChave: string;
+  chaveAcesso: string;
   clienteNome: string;
   qtdItens: number;
   status: string;
-  consultadoEm: Date;
-  payloadProtheus: unknown;
+  recebidoEm: Date;
+  consultadoEm: Date | null;
+  payload: unknown;
 }): FilaDocumento {
-  const payload = (input.payloadProtheus as QueuePayload | null) ?? null;
+  const payload = (input.payload as QueuePayload | null) ?? null;
   const qtdItensEntregues =
     payload?.itens?.reduce((total, item) => {
       const delivered = typeof item.qtdEntregue === 'number' && item.qtdEntregue > 0 ? 1 : 0;
@@ -28,11 +34,11 @@ function mapFilaItem(input: {
   return {
     id: input.id,
     documentoNumero: input.documentoNumero,
-    documentoChave: input.documentoChave,
+    documentoChave: input.chaveAcesso,
     clienteNome: input.clienteNome,
     qtdItens: input.qtdItens,
     status: input.status as FilaDocumento['status'],
-    consultadoEm: input.consultadoEm.toISOString(),
+    consultadoEm: (input.consultadoEm ?? input.recebidoEm).toISOString(),
     tipoDocumento: payload?.tipo === 'NFCE' ? 'NFCE' : 'NFE',
     qtdItensEntregues,
   };
@@ -41,13 +47,13 @@ function mapFilaItem(input: {
 export function createFilaRepository() {
   return {
     async listAllByLoja(lojaCodigo: string) {
-      const items = await prisma.filaDocumento.findMany({
+      const items = await prisma.documento.findMany({
         where: {
           lojaCodigo,
           removidoEm: null,
         },
         orderBy: {
-          consultadoEm: 'desc',
+          recebidoEm: 'desc',
         },
       });
 

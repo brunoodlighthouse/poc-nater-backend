@@ -38,7 +38,7 @@ export type AdminDocumentoListQuery = {
   perPage: number;
   status?: string;
   search?: string;
-  sortBy: 'consultadoEm' | 'documentoNumero' | 'clienteNome' | 'status';
+  sortBy: 'recebidoEm' | 'documentoNumero' | 'clienteNome' | 'status';
   sortOrder: 'asc' | 'desc';
 };
 

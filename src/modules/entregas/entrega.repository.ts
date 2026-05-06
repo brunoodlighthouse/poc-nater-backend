@@ -126,19 +126,20 @@ function mapQueueRecord(entry: {
   id: string;
   lojaCodigo: string;
   documentoNumero: string;
-  documentoChave: string;
+  chaveAcesso: string;
   status: string;
-  consultadoEm: Date;
-  payloadProtheus: unknown;
+  consultadoEm: Date | null;
+  recebidoEm: Date;
+  payload: unknown;
 }): QueueDocumentRecord {
   return {
     id: entry.id,
     lojaCodigo: entry.lojaCodigo,
     documentoNumero: entry.documentoNumero,
-    documentoChave: entry.documentoChave,
+    documentoChave: entry.chaveAcesso,
     status: entry.status,
-    consultadoEm: entry.consultadoEm,
-    payloadProtheus: entry.payloadProtheus as ProtheusDocumento,
+    consultadoEm: entry.consultadoEm ?? entry.recebidoEm,
+    payloadProtheus: entry.payload as ProtheusDocumento,
   };
 }
 
@@ -194,14 +195,14 @@ function mapOpenDelivery(entry: DeliveryRecord, mode: EntregaModo): EntregaEmAnd
 export function createEntregaRepository() {
   return {
     async findQueueDocumentByNumber(lojaCodigo: string, documentoNumero: string) {
-      const item = await prisma.filaDocumento.findFirst({
+      const item = await prisma.documento.findFirst({
         where: {
           lojaCodigo,
           documentoNumero,
           removidoEm: null,
         },
         orderBy: {
-          consultadoEm: 'desc',
+          recebidoEm: 'desc',
         },
       });
 
@@ -213,34 +214,36 @@ export function createEntregaRepository() {
       document: ProtheusDocumento,
     ): Promise<QueueDocumentRecord> {
       const consultadoEm = new Date();
-      const existingItem = await prisma.filaDocumento.findFirst({
+      const existingItem = await prisma.documento.findFirst({
         where: { lojaCodigo, documentoNumero: document.documento, removidoEm: null },
       });
 
       if (existingItem) {
-        const updated = await prisma.filaDocumento.update({
+        const updated = await prisma.documento.update({
           where: { id: existingItem.id },
           data: {
-            documentoChave: document.chaveAcesso,
+            chaveAcesso: document.chaveAcesso,
             clienteNome: document.cliente.nome,
             qtdItens: document.itens.length,
-            // status preservado: gerenciado pelas operações de entrega
-            payloadProtheus: toJsonValue(document),
+            payload: toJsonValue(document),
             consultadoEm,
           },
         });
         return mapQueueRecord(updated);
       }
 
-      const created = await prisma.filaDocumento.create({
+      const created = await prisma.documento.create({
         data: {
           lojaCodigo,
           documentoNumero: document.documento,
-          documentoChave: document.chaveAcesso,
+          chaveAcesso: document.chaveAcesso,
+          tipoDocumento: document.tipo,
           clienteNome: document.cliente.nome,
+          clienteDocumento: document.cliente.documento,
           qtdItens: document.itens.length,
           status: document.statusAtual === 'finalizado' ? 'finalizado' : document.statusAtual,
-          payloadProtheus: toJsonValue(document),
+          payload: toJsonValue(document),
+          origem: 'consulta',
           consultadoEm,
         },
       });
@@ -349,7 +352,7 @@ export function createEntregaRepository() {
           },
         });
 
-        await tx.filaDocumento.updateMany({
+        await tx.documento.updateMany({
           where: {
             documentoNumero: input.documentoNumero,
             removidoEm: null,
@@ -374,7 +377,7 @@ export function createEntregaRepository() {
         },
       });
 
-      await prisma.filaDocumento.updateMany({
+      await prisma.documento.updateMany({
         where: {
           documentoNumero: delivery.documentoNumero,
           removidoEm: null,
@@ -417,11 +420,10 @@ export function createEntregaRepository() {
           include: { itens: { orderBy: { itemIdProtheus: 'asc' } } },
         });
 
-        await tx.filaDocumento.update({
+        await tx.documento.update({
           where: { id: input.queueDocument.id },
           data: {
             status: filaStatus,
-            // payloadProtheus não é alterado: mantém os dados originais do Protheus
             consultadoEm: finalizedAt,
           },
         });

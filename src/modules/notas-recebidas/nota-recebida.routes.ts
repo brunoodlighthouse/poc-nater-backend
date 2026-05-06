@@ -1,11 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { NotaRecebidaController } from './nota-recebida.controller.js';
-import type { SessaoController } from '../sessoes/sessao.controller.js';
 import { buildErrorResponses, okResponseSchema } from '../../swagger.js';
 
 type NotaRecebidaRoutesOptions = {
   controller: NotaRecebidaController;
-  sessaoController: SessaoController;
 };
 
 const notaRecebidaSchema = {
@@ -37,13 +35,13 @@ const notaRecebidaSchema = {
 };
 
 export async function registerNotaRecebidaRoutes(app: FastifyInstance, options: NotaRecebidaRoutesOptions) {
-  const { controller, sessaoController } = options;
+  const { controller } = options;
 
   app.post(
     '/webhook',
     {
       schema: {
-        tags: ['Notas Recebidas'],
+        tags: ['Webhooks'],
         operationId: 'receiveWebhookNota',
         summary: 'Webhook para receber notas do Protheus',
         description: 'Endpoint chamado pelo Protheus ao gerar uma nota fiscal de venda',
@@ -84,33 +82,5 @@ export async function registerNotaRecebidaRoutes(app: FastifyInstance, options: 
       },
     },
     controller.receiveWebhook,
-  );
-
-  app.get(
-    '/',
-    {
-      schema: {
-        tags: ['Notas Recebidas'],
-        operationId: 'listTodayNotas',
-        summary: 'Listar notas recebidas hoje',
-        description: 'Retorna notas fiscais recebidas via webhook no dia atual para a loja da sessao',
-        security: [{ bearerAuth: [] }],
-        response: {
-          200: okResponseSchema({
-            type: 'array',
-            items: notaRecebidaSchema,
-          }),
-          ...buildErrorResponses([401, 500]),
-        },
-      },
-      preHandler: sessaoController.requireSession,
-      config: {
-        rateLimit: {
-          max: 60,
-          timeWindow: '1 minute',
-        },
-      },
-    },
-    controller.listToday,
   );
 }

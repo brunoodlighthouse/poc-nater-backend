@@ -47,10 +47,19 @@ async function main() {
   }
   console.log(`  ${entregadores.length} entregadores inseridos`);
 
-  // Documentos Protheus (simulam respostas do ERP)
+  // Documentos unificados (combinam dados do ERP e webhook)
+  const hoje = new Date();
   const documentos = [
     {
+      lojaCodigo: '001',
+      documentoNumero: '123456',
       chaveAcesso: '35240114200166000187550010000001231234567890',
+      tipoDocumento: 'NFE',
+      clienteNome: 'Joao da Silva',
+      clienteDocumento: '12345678901',
+      valorTotal: 4500.00,
+      qtdItens: 3,
+      status: 'pendente',
       payload: {
         documento: '123456',
         tipo: 'NFE',
@@ -63,35 +72,25 @@ async function main() {
         isVendaFutura: false,
         statusAtual: 'pendente',
         itens: [
-          {
-            id: '001',
-            codigoProduto: 'PROD-1234',
-            descricao: 'Adubo NPK 10-10-10 - 50kg',
-            qtdTotal: 20,
-            qtdEntregue: 0,
-            unidade: 'SC',
-          },
-          {
-            id: '002',
-            codigoProduto: 'PROD-4567',
-            descricao: 'Calcario Premium - 25kg',
-            qtdTotal: 10,
-            qtdEntregue: 0,
-            unidade: 'SC',
-          },
-          {
-            id: '003',
-            codigoProduto: 'PROD-5678',
-            descricao: 'Fertilizante Organico - 20kg',
-            qtdTotal: 15,
-            qtdEntregue: 0,
-            unidade: 'SC',
-          },
+          { id: '001', codigoProduto: 'PROD-1234', descricao: 'Adubo NPK 10-10-10 - 50kg', qtdTotal: 20, qtdEntregue: 0, unidade: 'SC' },
+          { id: '002', codigoProduto: 'PROD-4567', descricao: 'Calcario Premium - 25kg', qtdTotal: 10, qtdEntregue: 0, unidade: 'SC' },
+          { id: '003', codigoProduto: 'PROD-5678', descricao: 'Fertilizante Organico - 20kg', qtdTotal: 15, qtdEntregue: 0, unidade: 'SC' },
         ],
       },
+      origem: 'webhook',
+      recebidoEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 8, 15),
+      consultadoEm: new Date(Date.now() - 2 * 60 * 1000),
     },
     {
+      lojaCodigo: '001',
+      documentoNumero: '456789',
       chaveAcesso: '35240114200166000187550010000004561234567890',
+      tipoDocumento: 'NFCE',
+      clienteNome: 'Maria Souza',
+      clienteDocumento: '98765432100',
+      valorTotal: 320.50,
+      qtdItens: 1,
+      status: 'parcial',
       payload: {
         documento: '456789',
         tipo: 'NFCE',
@@ -106,19 +105,22 @@ async function main() {
         entregadorNome: 'Carlos Mota',
         entregueEm: '28/04/2026 10:15',
         itens: [
-          {
-            id: '001',
-            codigoProduto: 'PROD-7890',
-            descricao: 'Semente Milho Safra Ouro',
-            qtdTotal: 8,
-            qtdEntregue: 3,
-            unidade: 'SC',
-          },
+          { id: '001', codigoProduto: 'PROD-7890', descricao: 'Semente Milho Safra Ouro', qtdTotal: 8, qtdEntregue: 3, unidade: 'SC' },
         ],
       },
+      origem: 'webhook',
+      recebidoEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 9, 30),
+      consultadoEm: new Date(Date.now() - 18 * 60 * 1000),
     },
     {
+      lojaCodigo: '001',
+      documentoNumero: '789123',
       chaveAcesso: '35240114200166000187550010000007891234567890',
+      tipoDocumento: 'NFE',
+      clienteNome: 'Carlos Pereira',
+      clienteDocumento: '45645645612',
+      qtdItens: 1,
+      status: 'pendente',
       payload: {
         documento: '789123',
         tipo: 'NFE',
@@ -131,19 +133,22 @@ async function main() {
         isVendaFutura: true,
         statusAtual: 'pendente',
         itens: [
-          {
-            id: '001',
-            codigoProduto: 'PROD-2222',
-            descricao: 'Defensivo Agricola Plus',
-            qtdTotal: 4,
-            qtdEntregue: 0,
-            unidade: 'UN',
-          },
+          { id: '001', codigoProduto: 'PROD-2222', descricao: 'Defensivo Agricola Plus', qtdTotal: 4, qtdEntregue: 0, unidade: 'UN' },
         ],
       },
+      origem: 'consulta',
+      recebidoEm: new Date(Date.now() - 45 * 60 * 1000),
+      consultadoEm: new Date(Date.now() - 45 * 60 * 1000),
     },
     {
+      lojaCodigo: '001',
+      documentoNumero: '999000',
       chaveAcesso: '35240114200166000187550010000009991234567890',
+      tipoDocumento: 'NFE',
+      clienteNome: 'Ana Costa',
+      clienteDocumento: '22233344455',
+      qtdItens: 1,
+      status: 'finalizado',
       payload: {
         documento: '999000',
         tipo: 'NFE',
@@ -158,19 +163,23 @@ async function main() {
         entregadorNome: 'Fredy Almeida',
         entregueEm: '28/04/2026 14:30',
         itens: [
-          {
-            id: '001',
-            codigoProduto: 'PROD-3333',
-            descricao: 'Racao Bovino Max',
-            qtdTotal: 12,
-            qtdEntregue: 12,
-            unidade: 'SC',
-          },
+          { id: '001', codigoProduto: 'PROD-3333', descricao: 'Racao Bovino Max', qtdTotal: 12, qtdEntregue: 12, unidade: 'SC' },
         ],
       },
+      origem: 'consulta',
+      recebidoEm: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      consultadoEm: new Date(Date.now() - 3 * 60 * 60 * 1000),
     },
     {
+      lojaCodigo: '001',
+      documentoNumero: '111222',
       chaveAcesso: '35240114200166000187550010000011111234567890',
+      tipoDocumento: 'NFE',
+      clienteNome: 'Pedro Santos',
+      clienteDocumento: '55566677788',
+      valorTotal: 12750.00,
+      qtdItens: 4,
+      status: 'pendente',
       payload: {
         documento: '111222',
         tipo: 'NFE',
@@ -183,201 +192,87 @@ async function main() {
         isVendaFutura: false,
         statusAtual: 'pendente',
         itens: [
-          {
-            id: '001',
-            codigoProduto: 'PROD-4444',
-            descricao: 'Cimento CP-II 50kg',
-            qtdTotal: 30,
-            qtdEntregue: 0,
-            unidade: 'SC',
-          },
-          {
-            id: '002',
-            codigoProduto: 'PROD-5555',
-            descricao: 'Areia Lavada - m3',
-            qtdTotal: 2.5,
-            qtdEntregue: 0,
-            unidade: 'KG',
-          },
-          {
-            id: '003',
-            codigoProduto: 'PROD-6666',
-            descricao: 'Vergalhao CA-50 10mm',
-            qtdTotal: 100,
-            qtdEntregue: 0,
-            unidade: 'UN',
-          },
-          {
-            id: '004',
-            codigoProduto: 'PROD-7777',
-            descricao: 'Tijolo Ceramico 6 furos',
-            qtdTotal: 500,
-            qtdEntregue: 0,
-            unidade: 'UN',
-          },
+          { id: '001', codigoProduto: 'PROD-4444', descricao: 'Cimento CP-II 50kg', qtdTotal: 30, qtdEntregue: 0, unidade: 'SC' },
+          { id: '002', codigoProduto: 'PROD-5555', descricao: 'Areia Lavada - m3', qtdTotal: 2.5, qtdEntregue: 0, unidade: 'KG' },
+          { id: '003', codigoProduto: 'PROD-6666', descricao: 'Vergalhao CA-50 10mm', qtdTotal: 100, qtdEntregue: 0, unidade: 'UN' },
+          { id: '004', codigoProduto: 'PROD-7777', descricao: 'Tijolo Ceramico 6 furos', qtdTotal: 500, qtdEntregue: 0, unidade: 'UN' },
         ],
       },
-    },
-  ];
-
-  for (const doc of documentos) {
-    await prisma.documentoProtheus.upsert({
-      where: { chaveAcesso: doc.chaveAcesso },
-      update: { payload: doc.payload },
-      create: doc,
-    });
-  }
-  console.log(`  ${documentos.length} documentos Protheus inseridos`);
-
-  // Fila de documentos
-  const filaEntries = [
-    {
-      lojaCodigo: '001',
-      documentoNumero: '123456',
-      documentoChave: '35240114200166000187550010000001231234567890',
-      clienteNome: 'Joao da Silva',
-      qtdItens: 3,
-      status: 'pendente',
-      payloadProtheus: documentos[0].payload,
-      consultadoEm: new Date(Date.now() - 2 * 60 * 1000), // 2 min atras
-    },
-    {
-      lojaCodigo: '001',
-      documentoNumero: '456789',
-      documentoChave: '35240114200166000187550010000004561234567890',
-      clienteNome: 'Maria Souza',
-      qtdItens: 1,
-      status: 'parcial',
-      payloadProtheus: documentos[1].payload,
-      consultadoEm: new Date(Date.now() - 18 * 60 * 1000), // 18 min atras
-    },
-    {
-      lojaCodigo: '001',
-      documentoNumero: '789123',
-      documentoChave: '35240114200166000187550010000007891234567890',
-      clienteNome: 'Carlos Pereira',
-      qtdItens: 1,
-      status: 'pendente',
-      payloadProtheus: documentos[2].payload,
-      consultadoEm: new Date(Date.now() - 45 * 60 * 1000), // 45 min atras
-    },
-    {
-      lojaCodigo: '001',
-      documentoNumero: '999000',
-      documentoChave: '35240114200166000187550010000009991234567890',
-      clienteNome: 'Ana Costa',
-      qtdItens: 1,
-      status: 'finalizado',
-      payloadProtheus: documentos[3].payload,
-      consultadoEm: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3h atras
-    },
-    {
-      lojaCodigo: '001',
-      documentoNumero: '111222',
-      documentoChave: '35240114200166000187550010000011111234567890',
-      clienteNome: 'Pedro Santos',
-      qtdItens: 4,
-      status: 'pendente',
-      payloadProtheus: documentos[4].payload,
-      consultadoEm: new Date(Date.now() - 5 * 60 * 1000), // 5 min atras
-    },
-  ];
-
-  for (const entry of filaEntries) {
-    await prisma.filaDocumento.upsert({
-      where: {
-        id: (
-          await prisma.filaDocumento.findFirst({
-            where: {
-              lojaCodigo: entry.lojaCodigo,
-              documentoChave: entry.documentoChave,
-            },
-            select: { id: true },
-          })
-        )?.id ?? '00000000-0000-0000-0000-000000000000',
-      },
-      update: {
-        status: entry.status,
-        payloadProtheus: entry.payloadProtheus,
-        consultadoEm: entry.consultadoEm,
-      },
-      create: entry,
-    });
-  }
-  console.log(`  ${filaEntries.length} documentos na fila inseridos`);
-
-  // Notas recebidas hoje (simulam webhook do Protheus)
-  const hoje = new Date();
-  const notasRecebidas = [
-    {
-      lojaCodigo: '001',
-      documentoNumero: '123456',
-      chaveAcesso: '35240114200166000187550010000001231234567890',
-      clienteNome: 'Joao da Silva',
-      clienteDocumento: '12345678901',
-      tipoDocumento: 'NFE',
-      qtdItens: 3,
-      valorTotal: 4500.00,
-      payload: { origem: 'protheus_webhook' },
-      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 8, 15),
-    },
-    {
-      lojaCodigo: '001',
-      documentoNumero: '456789',
-      chaveAcesso: '35240114200166000187550010000004561234567890',
-      clienteNome: 'Maria Souza',
-      clienteDocumento: '98765432100',
-      tipoDocumento: 'NFCE',
-      qtdItens: 1,
-      valorTotal: 320.50,
-      payload: { origem: 'protheus_webhook' },
-      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 9, 30),
-    },
-    {
-      lojaCodigo: '001',
-      documentoNumero: '111222',
-      chaveAcesso: '35240114200166000187550010000011111234567890',
-      clienteNome: 'Pedro Santos',
-      clienteDocumento: '55566677788',
-      tipoDocumento: 'NFE',
-      qtdItens: 4,
-      valorTotal: 12750.00,
-      payload: { origem: 'protheus_webhook' },
-      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 10, 45),
+      origem: 'webhook',
+      recebidoEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 10, 45),
+      consultadoEm: new Date(Date.now() - 5 * 60 * 1000),
     },
     {
       lojaCodigo: '001',
       documentoNumero: '333444',
       chaveAcesso: '35240114200166000187550010000033341234567890',
+      tipoDocumento: 'NFE',
       clienteNome: 'Fernanda Lima',
       clienteDocumento: '11122233344',
-      tipoDocumento: 'NFE',
-      qtdItens: 2,
       valorTotal: 890.00,
-      payload: { origem: 'protheus_webhook' },
-      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 11, 20),
+      qtdItens: 2,
+      status: 'pendente',
+      payload: {
+        documento: '333444',
+        tipo: 'NFE',
+        chaveAcesso: '35240114200166000187550010000033341234567890',
+        cliente: {
+          codigo: 'C0006',
+          nome: 'Fernanda Lima',
+          documento: '11122233344',
+        },
+        isVendaFutura: false,
+        statusAtual: 'pendente',
+        itens: [
+          { id: '001', codigoProduto: 'PROD-8888', descricao: 'Mangueira Irrigacao 50m', qtdTotal: 2, qtdEntregue: 0, unidade: 'UN' },
+          { id: '002', codigoProduto: 'PROD-9999', descricao: 'Bomba Dagua 1CV', qtdTotal: 1, qtdEntregue: 0, unidade: 'UN' },
+        ],
+      },
+      origem: 'webhook',
+      recebidoEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 11, 20),
     },
     {
       lojaCodigo: '002',
       documentoNumero: '555666',
       chaveAcesso: '35240114200166000187550010000055561234567890',
+      tipoDocumento: 'NFCE',
       clienteNome: 'Ricardo Martins',
       clienteDocumento: '99988877766',
-      tipoDocumento: 'NFCE',
-      qtdItens: 1,
       valorTotal: 150.00,
-      payload: { origem: 'protheus_webhook' },
-      recebidaEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 8, 50),
+      qtdItens: 1,
+      status: 'pendente',
+      payload: {
+        documento: '555666',
+        tipo: 'NFCE',
+        chaveAcesso: '35240114200166000187550010000055561234567890',
+        cliente: {
+          codigo: 'C0007',
+          nome: 'Ricardo Martins',
+          documento: '99988877766',
+        },
+        isVendaFutura: false,
+        statusAtual: 'pendente',
+        itens: [
+          { id: '001', codigoProduto: 'PROD-1010', descricao: 'Enxada Tramontina', qtdTotal: 1, qtdEntregue: 0, unidade: 'UN' },
+        ],
+      },
+      origem: 'webhook',
+      recebidoEm: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 8, 50),
     },
   ];
 
-  // Limpa notas anteriores do seed para evitar duplicatas
-  await prisma.notaRecebida.deleteMany({});
+  // Limpa dados anteriores para evitar conflitos (ordem respeita FKs)
+  await prisma.logAlteracao.deleteMany({});
+  await prisma.entregaItem.deleteMany({});
+  await prisma.entrega.deleteMany({});
+  await prisma.adminSessao.deleteMany({});
+  await prisma.sessao.deleteMany({});
+  await prisma.documento.deleteMany({});
 
-  for (const nota of notasRecebidas) {
-    await prisma.notaRecebida.create({ data: nota });
+  for (const doc of documentos) {
+    await prisma.documento.create({ data: doc });
   }
-  console.log(`  ${notasRecebidas.length} notas recebidas inseridas`);
+  console.log(`  ${documentos.length} documentos inseridos`);
 
   console.log('Seed concluido com sucesso!');
 }

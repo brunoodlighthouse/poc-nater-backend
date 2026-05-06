@@ -1,71 +1,89 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../db/connection.js';
-import type { NotaRecebida } from './nota-recebida.types.js';
 import type { WebhookNotaInput } from './nota-recebida.schemas.js';
 
-function mapNotaRecebida(input: {
+export type WebhookNotaResult = {
   id: string;
   lojaCodigo: string;
   documentoNumero: string;
   chaveAcesso: string;
   clienteNome: string;
   clienteDocumento: string;
+  tipoDocumento: 'NFE' | 'NFCE';
+  qtdItens: number;
+  valorTotal: number;
+  recebidaEm: string;
+};
+
+function mapResult(doc: {
+  id: string;
+  lojaCodigo: string;
+  documentoNumero: string;
+  chaveAcesso: string;
+  clienteNome: string;
+  clienteDocumento: string | null;
   tipoDocumento: string;
   qtdItens: number;
   valorTotal: unknown;
-  recebidaEm: Date;
-}): NotaRecebida {
+  recebidoEm: Date;
+}): WebhookNotaResult {
   return {
-    id: input.id,
-    lojaCodigo: input.lojaCodigo,
-    documentoNumero: input.documentoNumero,
-    chaveAcesso: input.chaveAcesso,
-    clienteNome: input.clienteNome,
-    clienteDocumento: input.clienteDocumento,
-    tipoDocumento: input.tipoDocumento as 'NFE' | 'NFCE',
-    qtdItens: input.qtdItens,
-    valorTotal: Number(input.valorTotal),
-    recebidaEm: input.recebidaEm.toISOString(),
+    id: doc.id,
+    lojaCodigo: doc.lojaCodigo,
+    documentoNumero: doc.documentoNumero,
+    chaveAcesso: doc.chaveAcesso,
+    clienteNome: doc.clienteNome,
+    clienteDocumento: doc.clienteDocumento ?? '',
+    tipoDocumento: doc.tipoDocumento as 'NFE' | 'NFCE',
+    qtdItens: doc.qtdItens,
+    valorTotal: Number(doc.valorTotal ?? 0),
+    recebidaEm: doc.recebidoEm.toISOString(),
   };
 }
 
 export function createNotaRecebidaRepository() {
   return {
-    async create(input: WebhookNotaInput) {
-      const nota = await prisma.notaRecebida.create({
+    async upsert(input: WebhookNotaInput): Promise<WebhookNotaResult> {
+      const existing = await prisma.documento.findFirst({
+        where: {
+          lojaCodigo: input.lojaCodigo,
+          documentoNumero: input.documentoNumero,
+          removidoEm: null,
+        },
+      });
+
+      if (existing) {
+        const updated = await prisma.documento.update({
+          where: { id: existing.id },
+          data: {
+            chaveAcesso: input.chaveAcesso,
+            clienteNome: input.clienteNome,
+            clienteDocumento: input.clienteDocumento,
+            tipoDocumento: input.tipoDocumento,
+            qtdItens: input.qtdItens,
+            valorTotal: input.valorTotal,
+            payload: (input.payload ?? {}) as Prisma.InputJsonValue,
+          },
+        });
+        return mapResult(updated);
+      }
+
+      const created = await prisma.documento.create({
         data: {
           lojaCodigo: input.lojaCodigo,
           documentoNumero: input.documentoNumero,
           chaveAcesso: input.chaveAcesso,
+          tipoDocumento: input.tipoDocumento,
           clienteNome: input.clienteNome,
           clienteDocumento: input.clienteDocumento,
-          tipoDocumento: input.tipoDocumento,
           qtdItens: input.qtdItens,
           valorTotal: input.valorTotal,
           payload: (input.payload ?? {}) as Prisma.InputJsonValue,
+          origem: 'webhook',
         },
       });
 
-      return mapNotaRecebida(nota);
-    },
-
-    async listTodayByLoja(lojaCodigo: string) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const items = await prisma.notaRecebida.findMany({
-        where: {
-          lojaCodigo,
-          recebidaEm: {
-            gte: startOfDay,
-          },
-        },
-        orderBy: {
-          recebidaEm: 'desc',
-        },
-      });
-
-      return items.map(mapNotaRecebida);
+      return mapResult(created);
     },
   };
 }

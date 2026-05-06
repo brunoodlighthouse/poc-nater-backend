@@ -29,3 +29,29 @@ export type DocumentoConsultado = {
   }>;
   consultadoEm: string;
 };
+
+export type DocumentoListado = {
+  id: string;
+  documentoNumero: string;
+  documentoChave: string;
+  clienteNome: string;
+  qtdItens: number;
+  status: 'pendente' | 'em_andamento' | 'parcial' | 'finalizado' | 'cancelado';
+  consultadoEm: string;
+  tipoDocumento: 'NFE' | 'NFCE';
+  qtdItensEntregues: number;
+};
+
+export type NotaRecebidaListada = {
+  id: string;
+  lojaCodigo: string;
+  documentoNumero: string;
+  chaveAcesso: string;
+  clienteNome: string;
+  clienteDocumento: string;
+  tipoDocumento: 'NFE' | 'NFCE';
+  qtdItens: number;
+  valorTotal: number;
+  status: 'pendente' | 'em_andamento' | 'parcial' | 'finalizado' | 'cancelado';
+  recebidaEm: string;
+};

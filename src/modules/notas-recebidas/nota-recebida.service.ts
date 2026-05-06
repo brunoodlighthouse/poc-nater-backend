@@ -8,11 +8,7 @@ type NotaRecebidaServiceDependencies = {
 export function createNotaRecebidaService({ notaRecebidaRepository }: NotaRecebidaServiceDependencies) {
   return {
     async receiveNota(input: WebhookNotaInput) {
-      return notaRecebidaRepository.create(input);
-    },
-
-    async listToday(lojaCodigo: string) {
-      return notaRecebidaRepository.listTodayByLoja(lojaCodigo);
+      return notaRecebidaRepository.upsert(input);
     },
   };
 }

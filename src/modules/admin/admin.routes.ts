@@ -94,8 +94,8 @@ export async function registerAdminRoutes(app: FastifyInstance, options: AdminRo
             search: { type: 'string', maxLength: 200 },
             sortBy: {
               type: 'string',
-              enum: ['consultadoEm', 'documentoNumero', 'clienteNome', 'status'],
-              default: 'consultadoEm',
+              enum: ['recebidoEm', 'documentoNumero', 'clienteNome', 'status'],
+              default: 'recebidoEm',
             },
             sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
           },

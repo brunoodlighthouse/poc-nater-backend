@@ -80,13 +80,13 @@ export function createAdminRepository() {
       }
 
       const [items, total] = await Promise.all([
-        prisma.filaDocumento.findMany({
+        prisma.documento.findMany({
           where,
           orderBy: { [query.sortBy]: query.sortOrder },
           skip: (query.page - 1) * query.perPage,
           take: query.perPage,
         }),
-        prisma.filaDocumento.count({ where }),
+        prisma.documento.count({ where }),
       ]);
 
       const documentoNumeros = items.map((item) => item.documentoNumero);
@@ -119,11 +119,11 @@ export function createAdminRepository() {
         return {
           id: item.id,
           documentoNumero: item.documentoNumero,
-          documentoChave: item.documentoChave,
+          documentoChave: item.chaveAcesso,
           clienteNome: item.clienteNome,
           qtdItens: item.qtdItens,
           status: item.status,
-          consultadoEm: item.consultadoEm.toISOString(),
+          consultadoEm: (item.consultadoEm ?? item.recebidoEm).toISOString(),
           ultimaEntrega: delivery
             ? {
                 id: delivery.id,
@@ -148,9 +148,9 @@ export function createAdminRepository() {
       lojaCodigo: string,
       documentoNumero: string,
     ): Promise<AdminDocumentoDetalhe | null> {
-      const filaDoc = await prisma.filaDocumento.findFirst({
+      const filaDoc = await prisma.documento.findFirst({
         where: { lojaCodigo, documentoNumero, removidoEm: null },
-        orderBy: { consultadoEm: 'desc' },
+        orderBy: { recebidoEm: 'desc' },
       });
 
       if (!filaDoc) return null;
@@ -197,11 +197,11 @@ export function createAdminRepository() {
 
       return {
         documentoNumero: filaDoc.documentoNumero,
-        documentoChave: filaDoc.documentoChave,
+        documentoChave: filaDoc.chaveAcesso,
         clienteNome: filaDoc.clienteNome,
         qtdItens: filaDoc.qtdItens,
         status: filaDoc.status,
-        consultadoEm: filaDoc.consultadoEm.toISOString(),
+        consultadoEm: (filaDoc.consultadoEm ?? filaDoc.recebidoEm).toISOString(),
         entregas: mappedEntregas,
         logsAlteracao: allLogs,
       };
@@ -263,7 +263,7 @@ export function createAdminRepository() {
               : input.status === 'cancelada'
                 ? 'cancelado'
                 : 'parcial';
-          await tx.filaDocumento.updateMany({
+          await tx.documento.updateMany({
             where: { lojaCodigo: input.lojaCodigo, documentoNumero: entrega.documentoNumero, removidoEm: null },
             data: { status: filaStatus },
           });

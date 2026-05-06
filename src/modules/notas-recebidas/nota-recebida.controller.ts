@@ -17,15 +17,6 @@ export function createNotaRecebidaController({ notaRecebidaService }: NotaRecebi
         data: nota,
       });
     },
-
-    async listToday(request: FastifyRequest, reply: FastifyReply) {
-      const data = await notaRecebidaService.listToday(request.session.loja.codigo);
-
-      return reply.send({
-        ok: true,
-        data,
-      });
-    },
   };
 }
 

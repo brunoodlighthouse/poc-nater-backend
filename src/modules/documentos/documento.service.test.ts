@@ -6,8 +6,10 @@ import type { DocumentoRepository } from './documento.repository.js';
 function createRepositoryMock(): DocumentoRepository {
   return {
     findDocumentByAccessKey: vi.fn(),
-    findInQueueByChave: vi.fn(),
-    saveToQueue: vi.fn(),
+    findByChaveAcesso: vi.fn(),
+    saveToDocumentos: vi.fn(),
+    listAllByLoja: vi.fn(),
+    listTodayByLoja: vi.fn(),
   };
 }
 
@@ -31,7 +33,7 @@ describe('createDocumentoService', () => {
       statusAtual: 'pendente',
       itens: [],
     });
-    vi.mocked(repository.saveToQueue).mockResolvedValue({
+    vi.mocked(repository.saveToDocumentos).mockResolvedValue({
       documento: '123456',
       tipo: 'NFE',
       chaveAcesso: '35240114200166000187550010000001231234567890',

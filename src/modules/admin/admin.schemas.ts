@@ -79,7 +79,7 @@ export const adminDocumentoListSchema = z.object({
   status: z.enum(['pendente', 'parcial', 'finalizado', 'cancelado']).optional(),
   search: z.string().trim().max(200).optional(),
   sortBy: z
-    .enum(['consultadoEm', 'documentoNumero', 'clienteNome', 'status'])
-    .default('consultadoEm'),
+    .enum(['recebidoEm', 'documentoNumero', 'clienteNome', 'status'])
+    .default('recebidoEm'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });

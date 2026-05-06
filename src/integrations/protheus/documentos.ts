@@ -59,15 +59,17 @@ export function createDocumentGateway(): DocumentGateway {
   if (config.PROTHEUS_MOCK_ENABLED) {
     return {
       async findDocumentByAccessKey({ chaveAcesso }) {
-        const row = await prisma.documentoProtheus.findUnique({
-          where: { chaveAcesso },
+        // In mock mode, look up the document in the unified documentos table
+        const row = await prisma.documento.findFirst({
+          where: { chaveAcesso, removidoEm: null },
         });
 
         if (!row) {
           throw new DocumentoInvalidoError();
         }
 
-        return validateDocument(row.payload as ProtheusDocumento);
+        const payload = row.payload as unknown as ProtheusDocumento;
+        return validateDocument(payload);
       },
     };
   }

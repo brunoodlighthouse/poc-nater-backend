@@ -21,6 +21,24 @@ export function createDocumentoController({ documentoService }: DocumentoControl
         data,
       });
     },
+
+    async listDocumentos(request: FastifyRequest, reply: FastifyReply) {
+      const data = await documentoService.listDocumentos(request.session.loja.codigo);
+
+      return reply.send({
+        ok: true,
+        data,
+      });
+    },
+
+    async listNotasHoje(request: FastifyRequest, reply: FastifyReply) {
+      const data = await documentoService.listNotasHoje(request.session.loja.codigo);
+
+      return reply.send({
+        ok: true,
+        data,
+      });
+    },
   };
 }
 
